@@ -334,18 +334,22 @@ export function GameScreen() {
           onCommit={logWarning}
         />
       )}
-      <PossessionModal
-        open={possessionOpen}
-        game={activeGame}
-        onClose={() => setPossessionOpen(false)}
-        onCommit={logPossession}
-      />
-      <QuarterScoreModal
-        open={quarterScoreOpen}
-        game={activeGame}
-        onClose={() => setQuarterScoreOpen(false)}
-        onCommit={recordQuarterScore}
-      />
+      {possessionOpen && (
+        <PossessionModal
+          open={true}
+          game={activeGame}
+          onClose={() => setPossessionOpen(false)}
+          onCommit={logPossession}
+        />
+      )}
+      {quarterScoreOpen && (
+        <QuarterScoreModal
+          open={true}
+          game={activeGame}
+          onClose={() => setQuarterScoreOpen(false)}
+          onCommit={recordQuarterScore}
+        />
+      )}
       {timeoutSide !== null && (
         <TimeoutModal
           open={true}
@@ -372,12 +376,14 @@ export function GameScreen() {
           onClose={() => setColoursSide(null)}
         />
       )}
-      <EditEventModal
-        open={!!editingEvent}
-        game={activeGame}
-        event={editingEvent}
-        onClose={() => setEditingEvent(null)}
-      />
+      {editingEvent && (
+        <EditEventModal
+          open={true}
+          game={activeGame}
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+        />
+      )}
       <ConfirmDialog
         open={endGameConfirm}
         title="End this game?"
