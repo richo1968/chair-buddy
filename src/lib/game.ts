@@ -95,6 +95,33 @@ export function sortEvents(events: readonly GameEvent[]): GameEvent[] {
   });
 }
 
+export function sortEventsNewestFirst(events: readonly GameEvent[]): GameEvent[] {
+  return [...events].sort((a, b) => {
+    const qa = quarterOrder(a.quarter);
+    const qb = quarterOrder(b.quarter);
+    if (qa !== qb) return qb - qa;
+    const sa = clockToSeconds(a.gameClock);
+    const sb = clockToSeconds(b.gameClock);
+    if (sa !== sb) return sa - sb;
+    return b.wallTimestamp - a.wallTimestamp;
+  });
+}
+
+export function eventBelongsToTeam(event: GameEvent, side: Side): boolean {
+  switch (event.kind) {
+    case 'foul':
+      return event.team === side;
+    case 'warning':
+      return (event.target === 'teamA' ? 'A' : 'B') === side;
+    case 'possessionChange':
+      return event.newDirection === side;
+    case 'timeout':
+      return event.team === side;
+    case 'quarterScoreRecorded':
+      return true;
+  }
+}
+
 export function totalScore(game: Game, side: Side): number {
   return game.quarterScores.reduce(
     (acc, qs) => acc + (side === 'A' ? qs.teamAScore : qs.teamBScore),
@@ -201,5 +228,54 @@ export function coachStatus(game: Game, side: Side): CoachStatus {
     coachTechs: c,
     benchTechs: b,
     ejected: c >= 2 || c + b >= 3
+  };
+}
+
+export interface TimeoutStatus {
+  used: number;
+  max: number;
+  remaining: number;
+  phaseLabel: string;
+}
+
+export function timeoutStatus(game: Game, side: Side): TimeoutStatus {
+  const q = game.currentQuarter;
+  let phaseLabel: string;
+  let max: number;
+  let used = 0;
+  if (q === 'Q1' || q === 'Q2') {
+    phaseLabel = '1st half';
+    max = 2;
+    for (const e of game.events) {
+      if (
+        e.kind === 'timeout' &&
+        e.team === side &&
+        (e.quarter === 'Q1' || e.quarter === 'Q2')
+      )
+        used++;
+    }
+  } else if (q === 'Q3' || q === 'Q4') {
+    phaseLabel = '2nd half';
+    max = 3;
+    for (const e of game.events) {
+      if (
+        e.kind === 'timeout' &&
+        e.team === side &&
+        (e.quarter === 'Q3' || e.quarter === 'Q4')
+      )
+        used++;
+    }
+  } else {
+    phaseLabel = q;
+    max = 1;
+    for (const e of game.events) {
+      if (e.kind === 'timeout' && e.team === side && e.quarter === q) used++;
+    }
+  }
+  return {
+    used,
+    max,
+    remaining: Math.max(0, max - used),
+    phaseLabel
   };
 }

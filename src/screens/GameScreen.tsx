@@ -14,12 +14,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { TeamPanel } from '@/components/game/TeamPanel';
 import { PossessionArrow } from '@/components/game/PossessionArrow';
 import { QuarterScoresTable } from '@/components/game/QuarterScoresTable';
-import { EventLog } from '@/components/game/EventLog';
 import { WarningsGrid } from '@/components/game/WarningsGrid';
+import { TimeoutTimer } from '@/components/game/TimeoutTimer';
 import { FoulModal } from '@/components/game/modals/FoulModal';
 import { WarningModal } from '@/components/game/modals/WarningModal';
 import { PossessionModal } from '@/components/game/modals/PossessionModal';
 import { QuarterScoreModal } from '@/components/game/modals/QuarterScoreModal';
+import { TimeoutModal } from '@/components/game/modals/TimeoutModal';
 import { PlayersModal } from '@/components/game/modals/PlayersModal';
 import { TeamColoursModal } from '@/components/game/modals/TeamColoursModal';
 import { EditEventModal } from '@/components/game/modals/EditEventModal';
@@ -34,6 +35,7 @@ import type {
 } from '@/types';
 
 type FoulTarget = { side: Side; subject: FoulSubject };
+type ActiveTimeout = { team: Side; startedAt: number };
 
 export function GameScreen() {
   const { dispatch, activeGame } = useApp();
@@ -43,6 +45,8 @@ export function GameScreen() {
   const [warningType, setWarningType] = useState<WarningType | null>(null);
   const [possessionOpen, setPossessionOpen] = useState(false);
   const [quarterScoreOpen, setQuarterScoreOpen] = useState(false);
+  const [timeoutSide, setTimeoutSide] = useState<Side | null>(null);
+  const [activeTimeout, setActiveTimeout] = useState<ActiveTimeout | null>(null);
   const [playersSide, setPlayersSide] = useState<Side | null>(null);
   const [coloursSide, setColoursSide] = useState<Side | null>(null);
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
@@ -133,6 +137,38 @@ export function GameScreen() {
     setQuarterScoreOpen(false);
   };
 
+  const startTimeout = (side: Side) => {
+    setActiveTimeout({ team: side, startedAt: Date.now() });
+    setTimeoutSide(side);
+  };
+
+  const logTimeout = (gameClock: string, forfeited: boolean) => {
+    if (timeoutSide === null) return;
+    const event: GameEvent = {
+      id: newId(),
+      kind: 'timeout',
+      quarter: activeGame.currentQuarter,
+      gameClock,
+      wallTimestamp: Date.now(),
+      team: timeoutSide,
+      forfeited
+    };
+    dispatch({ type: 'ADD_EVENT', event });
+    if (forfeited) setActiveTimeout(null);
+    setTimeoutSide(null);
+  };
+
+  const cancelTimeoutTimer = () => {
+    setActiveTimeout(null);
+  };
+
+  const activeTimeoutTeamInfo =
+    activeTimeout === null
+      ? null
+      : activeTimeout.team === 'A'
+        ? activeGame.teamA
+        : activeGame.teamB;
+
   return (
     <div className="h-full w-full bg-bg text-fg flex flex-col overflow-hidden">
       <header className="shrink-0 px-4 py-2 border-b border-border bg-surface flex items-center gap-3">
@@ -192,15 +228,17 @@ export function GameScreen() {
         </Button>
       </header>
 
-      <main className="flex-1 min-h-0 grid grid-cols-[minmax(280px,1fr)_minmax(480px,1.4fr)_minmax(280px,1fr)] gap-3 p-3">
+      <main className="flex-1 min-h-0 grid grid-cols-[minmax(280px,1fr)_minmax(440px,1.2fr)_minmax(280px,1fr)] gap-3 p-3">
         <TeamPanel
           game={activeGame}
           side={leftSide}
           onFoulSubject={subject =>
             setFoulTarget({ side: leftSide, subject })
           }
+          onTimeout={() => startTimeout(leftSide)}
           onOpenPlayers={() => setPlayersSide(leftSide)}
           onOpenColours={() => setColoursSide(leftSide)}
+          onEventTap={setEditingEvent}
         />
 
         <section className="flex flex-col gap-3 min-h-0">
@@ -223,6 +261,20 @@ export function GameScreen() {
             onTap={() => setPossessionOpen(true)}
           />
 
+          <TimeoutTimer
+            active={
+              activeTimeout && activeTimeoutTeamInfo
+                ? {
+                    team: activeTimeout.team,
+                    teamInfo: activeTimeoutTeamInfo,
+                    startedAt: activeTimeout.startedAt
+                  }
+                : null
+            }
+            onStop={() => setActiveTimeout(null)}
+            onExpired={() => setActiveTimeout(null)}
+          />
+
           <QuarterScoresTable
             game={activeGame}
             onEditQuarter={quarter => {
@@ -233,9 +285,7 @@ export function GameScreen() {
             }}
           />
 
-          <div className="flex-1 min-h-0">
-            <EventLog game={activeGame} onEventTap={setEditingEvent} />
-          </div>
+          <div className="flex-1 min-h-0" />
 
           <WarningsGrid onTap={type => setWarningType(type)} />
         </section>
@@ -246,8 +296,10 @@ export function GameScreen() {
           onFoulSubject={subject =>
             setFoulTarget({ side: rightSide, subject })
           }
+          onTimeout={() => startTimeout(rightSide)}
           onOpenPlayers={() => setPlayersSide(rightSide)}
           onOpenColours={() => setColoursSide(rightSide)}
+          onEventTap={setEditingEvent}
         />
       </main>
 
@@ -282,6 +334,16 @@ export function GameScreen() {
         onClose={() => setQuarterScoreOpen(false)}
         onCommit={recordQuarterScore}
       />
+      {timeoutSide !== null && (
+        <TimeoutModal
+          open={true}
+          game={activeGame}
+          side={timeoutSide}
+          onClose={() => setTimeoutSide(null)}
+          onCommit={logTimeout}
+          onCancelTimer={cancelTimeoutTimer}
+        />
+      )}
       {playersSide && (
         <PlayersModal
           open={true}

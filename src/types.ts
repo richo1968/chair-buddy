@@ -59,11 +59,18 @@ export interface QuarterScoreRecordedEvent extends EventBase {
   teamBScore: number;
 }
 
+export interface TimeoutEvent extends EventBase {
+  kind: 'timeout';
+  team: Side;
+  forfeited: boolean;
+}
+
 export type GameEvent =
   | PossessionChangeEvent
   | FoulEvent
   | WarningEvent
-  | QuarterScoreRecordedEvent;
+  | QuarterScoreRecordedEvent
+  | TimeoutEvent;
 
 export interface QuarterScore {
   quarter: Quarter;

@@ -5,6 +5,7 @@ import type {
   GameEvent,
   PossessionChangeEvent,
   QuarterScoreRecordedEvent,
+  TimeoutEvent,
   WarningEvent,
   WarningTarget,
   WarningType,
@@ -62,6 +63,8 @@ export function describeEvent(event: GameEvent, game: Game): string {
       return describePossession(event as PossessionChangeEvent, game);
     case 'quarterScoreRecorded':
       return describeQuarterScore(event as QuarterScoreRecordedEvent);
+    case 'timeout':
+      return describeTimeout(event as TimeoutEvent, game);
   }
 }
 
@@ -101,6 +104,11 @@ function describeQuarterScore(e: QuarterScoreRecordedEvent): string {
   return `${e.quarterScored} score recorded: ${e.teamAScore} – ${e.teamBScore}`;
 }
 
+function describeTimeout(e: TimeoutEvent, game: Game): string {
+  const label = e.forfeited ? 'Timeout forfeited' : 'Timeout';
+  return `${teamName(game, e.team)} — ${label}`;
+}
+
 export function eventSideTint(event: GameEvent, game: Game): string | null {
   if (event.kind === 'foul') {
     return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
@@ -111,6 +119,9 @@ export function eventSideTint(event: GameEvent, game: Game): string | null {
   if (event.kind === 'warning') {
     const side = warningTargetSide(event.target);
     return side === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
+  }
+  if (event.kind === 'timeout') {
+    return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   return null;
 }

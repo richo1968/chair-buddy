@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   ClipboardList,
   Flag,
+  Timer,
   type LucideIcon
 } from 'lucide-react';
 import type { Game, GameEvent } from '@/types';
@@ -39,6 +40,11 @@ function eventIcon(ev: GameEvent): {
       return {
         Icon: ClipboardList,
         classes: 'text-accent bg-accent/10'
+      };
+    case 'timeout':
+      return {
+        Icon: Timer,
+        classes: 'text-fg bg-muted'
       };
   }
 }
