@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import type { ArrowDirection, Game, Side, Team } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -84,25 +84,37 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
 
         <div className={cn('space-y-5', !isInitial && 'w-[320px]')}>
           <div>
-            <div className="text-xs text-muted-fg uppercase tracking-widest mb-2">
-              Arrow points
+            <div className="text-xs text-muted-fg uppercase tracking-widest mb-2 flex items-center justify-between">
+              <span>Arrow points</span>
+              {!isInitial && (
+                <span className="normal-case tracking-normal text-[10px] text-accent font-semibold">
+                  auto-flipped — tap to override
+                </span>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <DirButton
                 dir="left"
                 active={direction === 'left'}
+                emphasised={!isInitial && direction === 'left'}
                 onClick={() => setDirection('left')}
               />
               <DirButton
                 dir="right"
                 active={direction === 'right'}
+                emphasised={!isInitial && direction === 'right'}
                 onClick={() => setDirection('right')}
               />
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-fg uppercase tracking-widest mb-2">
-              Next possession
+            <div className="text-xs text-muted-fg uppercase tracking-widest mb-2 flex items-center justify-between">
+              <span>Next possession</span>
+              {!isInitial && (
+                <span className="normal-case tracking-normal text-[10px] text-accent font-semibold">
+                  auto-flipped — tap to override
+                </span>
+              )}
             </div>
             <div className="space-y-2">
               <TeamCard
@@ -110,6 +122,7 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
                 side={leftSide}
                 benchSide="left"
                 active={team === leftSide}
+                emphasised={!isInitial && team === leftSide}
                 onClick={() => setTeam(leftSide)}
               />
               <TeamCard
@@ -117,6 +130,7 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
                 side={rightSide}
                 benchSide="right"
                 active={team === rightSide}
+                emphasised={!isInitial && team === rightSide}
                 onClick={() => setTeam(rightSide)}
               />
             </div>
@@ -130,10 +144,12 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
 function DirButton({
   dir,
   active,
+  emphasised,
   onClick
 }: {
   dir: ArrowDirection;
   active: boolean;
+  emphasised?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -141,12 +157,21 @@ function DirButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-2xl border-2 bg-black text-danger',
+        'relative rounded-2xl bg-black text-danger',
         'flex flex-col items-center justify-center py-4 gap-1',
         'active:brightness-110 transition-none',
-        active ? 'border-accent' : 'border-danger/60'
+        active
+          ? emphasised
+            ? 'border-4 border-accent ring-4 ring-accent/30'
+            : 'border-4 border-accent'
+          : 'border-2 border-danger/40 opacity-55'
       )}
     >
+      {active && (
+        <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-accent text-bg flex items-center justify-center">
+          <Check className="w-3 h-3" strokeWidth={3.5} />
+        </span>
+      )}
       {dir === 'left' ? (
         <ArrowLeft className="w-10 h-10" strokeWidth={3.25} />
       ) : (
@@ -164,12 +189,14 @@ function TeamCard({
   side,
   benchSide,
   active,
+  emphasised,
   onClick
 }: {
   team: Team;
   side: Side;
   benchSide: 'left' | 'right';
   active: boolean;
+  emphasised?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -177,13 +204,22 @@ function TeamCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full rounded-2xl border-2 p-3 text-left',
+        'relative w-full rounded-2xl p-3 text-left',
         'flex items-center gap-3',
         'active:brightness-110 transition-none',
-        active ? 'border-accent' : 'border-border'
+        active
+          ? emphasised
+            ? 'border-4 border-accent ring-4 ring-accent/30'
+            : 'border-4 border-accent'
+          : 'border-2 border-border opacity-55'
       )}
       style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
     >
+      {active && (
+        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent text-bg flex items-center justify-center">
+          <Check className="w-3 h-3" strokeWidth={3.5} />
+        </span>
+      )}
       {benchSide === 'left' && <ArrowLeft className="w-4 h-4 opacity-70" />}
       <div className="flex-1 min-w-0">
         <div className="text-[10px] uppercase tracking-widest opacity-70">

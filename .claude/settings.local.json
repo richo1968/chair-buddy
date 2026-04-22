@@ -31,7 +31,8 @@
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: make warnings grid visible \\(brighter text, warn icons, larger buttons\\)\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: team event log scrolls internally, overflow-hidden prevents panel growth\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: OT only when tied at end of Q4/OT; modal shows projected tie state\")",
-      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: initial possession leaves bench layout alone, shows bench side in team picker\")"
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: initial possession leaves bench layout alone, shows bench side in team picker\")",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"ui: in-game arrow change shows pre-selected defaults prominently \\(ring+check\\)\")"
     ]
   }
 }
