@@ -33,3 +33,6 @@ dev-dist/
 .env
 .env.*
 !.env.example
+
+# Claude Code local settings
+.claude/
