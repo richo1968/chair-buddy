@@ -42,6 +42,7 @@ export function newGame(opts: {
     teamB: opts.teamB,
     currentQuarter: 'Q1',
     possessionArrow: null,
+    arrowDirection: null,
     layout: opts.layout ?? 'A-left',
     finished: false,
     lastGameClock: DEFAULT_CLOCK,
@@ -114,7 +115,7 @@ export function eventBelongsToTeam(event: GameEvent, side: Side): boolean {
     case 'warning':
       return (event.target === 'teamA' ? 'A' : 'B') === side;
     case 'possessionChange':
-      return event.newDirection === side;
+      return event.newTeam === side;
     case 'timeout':
       return event.team === side;
     case 'quarterScoreRecorded':

@@ -97,7 +97,7 @@ function describeWarning(e: WarningEvent, game: Game): string {
 }
 
 function describePossession(e: PossessionChangeEvent, game: Game): string {
-  return `Possession → ${teamName(game, e.newDirection)}`;
+  return `Possession → ${teamName(game, e.newTeam)} (arrow ${e.newArrowDirection})`;
 }
 
 function describeQuarterScore(e: QuarterScoreRecordedEvent): string {
@@ -114,7 +114,7 @@ export function eventSideTint(event: GameEvent, game: Game): string | null {
     return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   if (event.kind === 'possessionChange') {
-    return event.newDirection === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
+    return event.newTeam === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   if (event.kind === 'warning') {
     const side = warningTargetSide(event.target);

@@ -26,6 +26,7 @@ import { TeamColoursModal } from '@/components/game/modals/TeamColoursModal';
 import { EditEventModal } from '@/components/game/modals/EditEventModal';
 import { newId } from '@/lib/game';
 import type {
+  ArrowDirection,
   FoulSubject,
   FoulType,
   GameEvent,
@@ -93,9 +94,17 @@ export function GameScreen() {
     setWarningType(null);
   };
 
-  const logPossession = (newDirection: Side, gameClock: string | null) => {
+  const logPossession = (
+    newTeam: Side,
+    newArrowDirection: ArrowDirection,
+    gameClock: string | null
+  ) => {
     if (gameClock === null) {
-      dispatch({ type: 'SET_POSSESSION', arrow: newDirection });
+      dispatch({
+        type: 'INITIAL_POSSESSION',
+        team: newTeam,
+        direction: newArrowDirection
+      });
     } else {
       const event: GameEvent = {
         id: newId(),
@@ -103,7 +112,8 @@ export function GameScreen() {
         quarter: activeGame.currentQuarter,
         gameClock,
         wallTimestamp: Date.now(),
-        newDirection
+        newTeam,
+        newArrowDirection
       };
       dispatch({ type: 'ADD_EVENT', event });
     }
@@ -122,15 +132,17 @@ export function GameScreen() {
       teamAScore: a,
       teamBScore: b
     });
-    if (flipArrow && activeGame.possessionArrow) {
-      const flipped: Side = activeGame.possessionArrow === 'A' ? 'B' : 'A';
+    if (flipArrow && activeGame.possessionArrow && activeGame.arrowDirection) {
+      const flippedDirection: ArrowDirection =
+        activeGame.arrowDirection === 'left' ? 'right' : 'left';
       const event: GameEvent = {
         id: newId(),
         kind: 'possessionChange',
         quarter: activeGame.currentQuarter,
         gameClock,
         wallTimestamp: Date.now(),
-        newDirection: flipped
+        newTeam: activeGame.possessionArrow,
+        newArrowDirection: flippedDirection
       };
       dispatch({ type: 'ADD_EVENT', event });
     }

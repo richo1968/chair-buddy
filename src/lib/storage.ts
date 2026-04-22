@@ -37,6 +37,20 @@ function migrateEvent(e: GameEvent): GameEvent {
       };
     }
   }
+  if (e.kind === 'possessionChange') {
+    const legacy = e as unknown as {
+      newTeam?: string;
+      newArrowDirection?: string;
+      newDirection?: string;
+    };
+    if (!legacy.newTeam || !legacy.newArrowDirection) {
+      return {
+        ...e,
+        newTeam: (legacy.newTeam ?? legacy.newDirection ?? 'A') as 'A' | 'B',
+        newArrowDirection: (legacy.newArrowDirection ?? 'left') as 'left' | 'right'
+      };
+    }
+  }
   return e;
 }
 
@@ -48,6 +62,7 @@ function migrateGame(g: LegacyGame): Game {
     teamB: migrateTeam(g.teamB),
     layout: g.layout ?? 'A-left',
     finished: g.finished ?? false,
+    arrowDirection: base.arrowDirection ?? null,
     events: (base.events ?? []).map(migrateEvent)
   };
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import type {
+  ArrowDirection,
   FoulEvent,
   FoulType,
   Game,
@@ -34,7 +35,10 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
     event?.kind === 'foul' ? event.type : null
   );
   const [possession, setPossession] = useState<Side | null>(
-    event?.kind === 'possessionChange' ? event.newDirection : null
+    event?.kind === 'possessionChange' ? event.newTeam : null
+  );
+  const [arrowDir, setArrowDir] = useState<ArrowDirection | null>(
+    event?.kind === 'possessionChange' ? event.newArrowDirection : null
   );
   const [scoreA, setScoreA] = useState(
     event?.kind === 'quarterScoreRecorded' ? String(event.teamAScore) : ''
@@ -58,13 +62,14 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
         eventId: event.id,
         patch: { gameClock: clock, type: foulType } as Partial<FoulEvent>
       });
-    } else if (event.kind === 'possessionChange' && possession) {
+    } else if (event.kind === 'possessionChange' && possession && arrowDir) {
       dispatch({
         type: 'UPDATE_EVENT',
         eventId: event.id,
         patch: {
           gameClock: clock,
-          newDirection: possession
+          newTeam: possession,
+          newArrowDirection: arrowDir
         } as Partial<PossessionChangeEvent>
       });
     } else if (event.kind === 'warning') {
@@ -164,31 +169,64 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
           )}
 
           {event.kind === 'possessionChange' && (
-            <div className="space-y-2">
-              <div className="text-sm text-muted-fg">Possession to</div>
-              {(['A', 'B'] as Side[]).map(s => {
-                const team = s === 'A' ? game.teamA : game.teamB;
-                return (
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm text-muted-fg mb-1.5">Arrow direction</div>
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    key={s}
                     type="button"
-                    onClick={() => setPossession(s)}
+                    onClick={() => setArrowDir('left')}
                     className={cn(
-                      'w-full rounded-2xl border-2 px-3 py-3 text-left',
+                      'rounded-2xl border-2 bg-black text-danger py-3 flex items-center justify-center gap-1',
                       'active:brightness-110 transition-none',
-                      possession === s ? 'border-accent' : 'border-border'
+                      arrowDir === 'left' ? 'border-accent' : 'border-danger/60'
                     )}
-                    style={{
-                      backgroundColor: team.jerseyColour,
-                      color: team.numberColour
-                    }}
                   >
-                    <div className="text-xl font-bold">
-                      {team.name || `Team ${s}`}
-                    </div>
+                    <ArrowLeft className="w-6 h-6" strokeWidth={3} />
+                    <span className="text-xs font-bold uppercase">Left</span>
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => setArrowDir('right')}
+                    className={cn(
+                      'rounded-2xl border-2 bg-black text-danger py-3 flex items-center justify-center gap-1',
+                      'active:brightness-110 transition-none',
+                      arrowDir === 'right' ? 'border-accent' : 'border-danger/60'
+                    )}
+                  >
+                    <span className="text-xs font-bold uppercase">Right</span>
+                    <ArrowRight className="w-6 h-6" strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-fg mb-1.5">Possession to</div>
+                <div className="space-y-2">
+                  {(['A', 'B'] as Side[]).map(s => {
+                    const team = s === 'A' ? game.teamA : game.teamB;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setPossession(s)}
+                        className={cn(
+                          'w-full rounded-2xl border-2 px-3 py-3 text-left',
+                          'active:brightness-110 transition-none',
+                          possession === s ? 'border-accent' : 'border-border'
+                        )}
+                        style={{
+                          backgroundColor: team.jerseyColour,
+                          color: team.numberColour
+                        }}
+                      >
+                        <div className="text-lg font-bold">
+                          {team.name || `Team ${s}`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

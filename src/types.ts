@@ -28,9 +28,12 @@ export interface EventBase {
   quarter: Quarter;
 }
 
+export type ArrowDirection = 'left' | 'right';
+
 export interface PossessionChangeEvent extends EventBase {
   kind: 'possessionChange';
-  newDirection: Side;
+  newTeam: Side;
+  newArrowDirection: ArrowDirection;
 }
 
 export type FoulSubject =
@@ -86,6 +89,7 @@ export interface Game {
   teamB: Team;
   currentQuarter: Quarter;
   possessionArrow: Side | null;
+  arrowDirection: ArrowDirection | null;
   layout: BenchLayout;
   finished: boolean;
   lastGameClock: string;

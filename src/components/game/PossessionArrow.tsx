@@ -8,10 +8,7 @@ interface Props {
 }
 
 export function PossessionArrow({ game, onTap }: Props) {
-  const arrow = game.possessionArrow;
-  const leftIsA = game.layout === 'A-left';
-  const pointsLeft =
-    arrow !== null && ((arrow === 'A') === leftIsA);
+  const direction = game.arrowDirection;
 
   return (
     <button
@@ -24,14 +21,14 @@ export function PossessionArrow({ game, onTap }: Props) {
       )}
       aria-label="Possession arrow"
     >
-      {arrow === null ? (
+      {direction === null ? (
         <>
           <Minus className="w-10 h-10 opacity-70" />
           <span className="text-base font-semibold tracking-wide">
             Tap to set possession
           </span>
         </>
-      ) : pointsLeft ? (
+      ) : direction === 'left' ? (
         <ArrowLeft className="w-20 h-20" strokeWidth={3.25} />
       ) : (
         <ArrowRight className="w-20 h-20" strokeWidth={3.25} />

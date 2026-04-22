@@ -1,5 +1,6 @@
 import type {
   AppState,
+  ArrowDirection,
   BenchLayout,
   Game,
   GameEvent,
@@ -23,8 +24,16 @@ export type Action =
   | { type: 'UPDATE_EVENT'; eventId: string; patch: Partial<GameEvent> }
   | { type: 'DELETE_EVENT'; eventId: string }
   | { type: 'SET_LAST_CLOCK'; clock: string }
-  | { type: 'SET_POSSESSION'; arrow: Side | null }
-  | { type: 'INITIAL_POSSESSION'; team: Side }
+  | {
+      type: 'SET_POSSESSION';
+      arrow: Side | null;
+      direction: ArrowDirection | null;
+    }
+  | {
+      type: 'INITIAL_POSSESSION';
+      team: Side;
+      direction: ArrowDirection;
+    }
   | { type: 'SET_LAYOUT'; layout: BenchLayout }
   | { type: 'SWAP_BENCHES' }
   | { type: 'FINISH_GAME' }
@@ -111,7 +120,8 @@ export function reducer(state: AppState, action: Action): AppState {
           updatedAt: Date.now()
         };
         if (action.event.kind === 'possessionChange') {
-          next.possessionArrow = action.event.newDirection;
+          next.possessionArrow = action.event.newTeam;
+          next.arrowDirection = action.event.newArrowDirection;
         }
         return next;
       });
@@ -140,11 +150,21 @@ export function reducer(state: AppState, action: Action): AppState {
       return mapActive(state, g => touch({ ...g, lastGameClock: action.clock }));
 
     case 'SET_POSSESSION':
-      return mapActive(state, g => touch({ ...g, possessionArrow: action.arrow }));
+      return mapActive(state, g =>
+        touch({
+          ...g,
+          possessionArrow: action.arrow,
+          arrowDirection: action.direction
+        })
+      );
 
     case 'INITIAL_POSSESSION':
       return mapActive(state, g =>
-        touch({ ...g, possessionArrow: action.team })
+        touch({
+          ...g,
+          possessionArrow: action.team,
+          arrowDirection: action.direction
+        })
       );
 
     case 'FINISH_GAME':
