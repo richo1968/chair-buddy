@@ -33,10 +33,15 @@ export interface PossessionChangeEvent extends EventBase {
   newDirection: Side;
 }
 
+export type FoulSubject =
+  | { kind: 'player'; playerId: string }
+  | { kind: 'coach' }
+  | { kind: 'bench' };
+
 export interface FoulEvent extends EventBase {
   kind: 'foul';
   team: Side;
-  playerId: string;
+  on: FoulSubject;
   type: FoulType;
 }
 

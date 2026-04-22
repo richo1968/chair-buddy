@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
+import type { PlayerFoulStats } from '@/lib/game';
 
 interface Props {
   player: Player;
-  fouls: number;
+  stats: PlayerFoulStats;
   jerseyColour: string;
   numberColour: string;
   onClick: () => void;
@@ -11,20 +12,39 @@ interface Props {
 
 export function PlayerTile({
   player,
-  fouls,
+  stats,
   jerseyColour,
   numberColour,
   onClick
 }: Props) {
-  const foulOut = fouls >= 5;
+  const redBorder = stats.ejected || stats.fourFoulWarning;
+  const orangeBorder = !redBorder && stats.tuWarning;
+
+  let statusChip: string;
+  let chipClass: string;
+  if (stats.ejected) {
+    statusChip = stats.ejectedReason === 'dq' ? 'DQ' : 'OUT';
+    chipClass = 'bg-danger text-white';
+  } else if (stats.tu > 0) {
+    statusChip = `${stats.total}F·${stats.tu}T`;
+    chipClass = 'bg-black/30';
+  } else {
+    statusChip = `${stats.total}F`;
+    chipClass = 'bg-black/25';
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
         'relative aspect-square rounded-2xl flex flex-col items-center justify-center',
-        'border-2 active:brightness-110 transition-none select-none',
-        foulOut ? 'border-danger' : 'border-border'
+        'active:brightness-110 transition-none select-none',
+        redBorder
+          ? 'border-4 border-danger'
+          : orangeBorder
+            ? 'border-4 border-warn'
+            : 'border-2 border-border'
       )}
       style={{ backgroundColor: jerseyColour, color: numberColour }}
     >
@@ -41,12 +61,16 @@ export function PlayerTile({
       )}
       <div
         className={cn(
-          'mt-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold',
-          foulOut ? 'bg-danger text-white' : 'bg-black/25'
+          'mt-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold font-mono',
+          chipClass
         )}
-        style={!foulOut ? { color: numberColour } : undefined}
+        style={
+          !stats.ejected && stats.tu === 0
+            ? { color: numberColour }
+            : undefined
+        }
       >
-        {foulOut ? 'FOULED OUT' : `${fouls} F`}
+        {statusChip}
       </div>
     </button>
   );

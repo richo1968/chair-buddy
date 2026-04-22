@@ -104,8 +104,62 @@ export function totalScore(game: Game, side: Side): number {
 
 export function foulsForPlayer(game: Game, playerId: string): number {
   return game.events.filter(
-    e => e.kind === 'foul' && e.playerId === playerId
+    e =>
+      e.kind === 'foul' &&
+      e.on.kind === 'player' &&
+      e.on.playerId === playerId
   ).length;
+}
+
+export interface PlayerFoulStats {
+  total: number;
+  personal: number;
+  technical: number;
+  unsportsmanlike: number;
+  disqualifying: number;
+  tu: number;
+  ejected: boolean;
+  ejectedReason: 'five' | 'tu' | 'dq' | null;
+  fourFoulWarning: boolean;
+  tuWarning: boolean;
+}
+
+export function playerFoulStats(
+  game: Game,
+  playerId: string
+): PlayerFoulStats {
+  let personal = 0;
+  let technical = 0;
+  let unsportsmanlike = 0;
+  let disqualifying = 0;
+  for (const e of game.events) {
+    if (e.kind !== 'foul') continue;
+    if (e.on.kind !== 'player') continue;
+    if (e.on.playerId !== playerId) continue;
+    if (e.type === 'personal') personal++;
+    else if (e.type === 'technical') technical++;
+    else if (e.type === 'unsportsmanlike') unsportsmanlike++;
+    else if (e.type === 'disqualifying') disqualifying++;
+  }
+  const total = personal + technical + unsportsmanlike + disqualifying;
+  const tu = technical + unsportsmanlike;
+  let ejectedReason: PlayerFoulStats['ejectedReason'] = null;
+  if (disqualifying >= 1) ejectedReason = 'dq';
+  else if (tu >= 2) ejectedReason = 'tu';
+  else if (total >= 5) ejectedReason = 'five';
+  const ejected = ejectedReason !== null;
+  return {
+    total,
+    personal,
+    technical,
+    unsportsmanlike,
+    disqualifying,
+    tu,
+    ejected,
+    ejectedReason,
+    fourFoulWarning: !ejected && total === 4,
+    tuWarning: !ejected && tu === 1
+  };
 }
 
 export function teamFoulsForQuarter(
@@ -117,6 +171,35 @@ export function teamFoulsForQuarter(
     e =>
       e.kind === 'foul' &&
       e.team === side &&
-      e.quarter === quarter
+      e.quarter === quarter &&
+      e.on.kind === 'player'
   ).length;
+}
+
+export function coachTechs(game: Game, side: Side): number {
+  return game.events.filter(
+    e => e.kind === 'foul' && e.team === side && e.on.kind === 'coach'
+  ).length;
+}
+
+export function benchTechs(game: Game, side: Side): number {
+  return game.events.filter(
+    e => e.kind === 'foul' && e.team === side && e.on.kind === 'bench'
+  ).length;
+}
+
+export interface CoachStatus {
+  coachTechs: number;
+  benchTechs: number;
+  ejected: boolean;
+}
+
+export function coachStatus(game: Game, side: Side): CoachStatus {
+  const c = coachTechs(game, side);
+  const b = benchTechs(game, side);
+  return {
+    coachTechs: c,
+    benchTechs: b,
+    ejected: c >= 2 || c + b >= 3
+  };
 }

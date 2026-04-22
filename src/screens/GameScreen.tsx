@@ -25,6 +25,7 @@ import { TeamColoursModal } from '@/components/game/modals/TeamColoursModal';
 import { EditEventModal } from '@/components/game/modals/EditEventModal';
 import { newId } from '@/lib/game';
 import type {
+  FoulSubject,
   FoulType,
   GameEvent,
   Side,
@@ -32,7 +33,7 @@ import type {
   WarningType
 } from '@/types';
 
-type FoulTarget = { side: Side; playerId: string };
+type FoulTarget = { side: Side; subject: FoulSubject };
 
 export function GameScreen() {
   const { dispatch, activeGame } = useApp();
@@ -61,7 +62,7 @@ export function GameScreen() {
       gameClock,
       wallTimestamp: Date.now(),
       team: foulTarget.side,
-      playerId: foulTarget.playerId,
+      on: foulTarget.subject,
       type
     };
     dispatch({ type: 'ADD_EVENT', event });
@@ -195,8 +196,8 @@ export function GameScreen() {
         <TeamPanel
           game={activeGame}
           side={leftSide}
-          onPlayerTap={playerId =>
-            setFoulTarget({ side: leftSide, playerId })
+          onFoulSubject={subject =>
+            setFoulTarget({ side: leftSide, subject })
           }
           onOpenPlayers={() => setPlayersSide(leftSide)}
           onOpenColours={() => setColoursSide(leftSide)}
@@ -242,8 +243,8 @@ export function GameScreen() {
         <TeamPanel
           game={activeGame}
           side={rightSide}
-          onPlayerTap={playerId =>
-            setFoulTarget({ side: rightSide, playerId })
+          onFoulSubject={subject =>
+            setFoulTarget({ side: rightSide, subject })
           }
           onOpenPlayers={() => setPlayersSide(rightSide)}
           onOpenColours={() => setColoursSide(rightSide)}
@@ -255,7 +256,7 @@ export function GameScreen() {
           open={true}
           game={activeGame}
           side={foulTarget.side}
-          playerId={foulTarget.playerId}
+          subject={foulTarget.subject}
           onClose={() => setFoulTarget(null)}
           onCommit={logFoul}
         />

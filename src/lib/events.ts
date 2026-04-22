@@ -72,11 +72,19 @@ function teamName(game: Game, side: Side): string {
 
 function describeFoul(e: FoulEvent, game: Game): string {
   const team = e.team === 'A' ? game.teamA : game.teamB;
-  const player = team.players.find(p => p.id === e.playerId);
+  const base = teamName(game, e.team);
+  const on = e.on;
+  if (on.kind === 'coach') {
+    return `${base} coach — ${FOUL_TYPE_LABEL[e.type]}`;
+  }
+  if (on.kind === 'bench') {
+    return `${base} bench — ${FOUL_TYPE_LABEL[e.type]}`;
+  }
+  const player = team.players.find(p => p.id === on.playerId);
   const tag = player
     ? `#${player.number}${player.name ? ' ' + player.name : ''}`
     : '(removed player)';
-  return `${teamName(game, e.team)} ${tag} — ${FOUL_TYPE_LABEL[e.type]}`;
+  return `${base} ${tag} — ${FOUL_TYPE_LABEL[e.type]}`;
 }
 
 function describeWarning(e: WarningEvent, game: Game): string {

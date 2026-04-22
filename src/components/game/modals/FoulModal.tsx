@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FoulType, Game, Side } from '@/types';
+import type { FoulSubject, FoulType, Game, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
 import { FOUL_TYPE_LABEL } from '@/lib/events';
@@ -9,12 +9,12 @@ interface Props {
   open: boolean;
   game: Game;
   side: Side;
-  playerId: string;
+  subject: FoulSubject;
   onClose: () => void;
   onCommit: (type: FoulType, gameClock: string) => void;
 }
 
-const FOUL_TYPES: FoulType[] = [
+const PLAYER_TYPES: FoulType[] = [
   'personal',
   'technical',
   'unsportsmanlike',
@@ -25,42 +25,83 @@ export function FoulModal({
   open,
   game,
   side,
-  playerId,
+  subject,
   onClose,
   onCommit
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
-  const player = team.players.find(p => p.id === playerId);
+  const player =
+    subject.kind === 'player'
+      ? team.players.find(p => p.id === subject.playerId)
+      : null;
+
   const [clock, setClock] = useState(game.lastGameClock);
 
-  if (!open || !player) return null;
+  if (!open) return null;
+  if (subject.kind === 'player' && !player) return null;
 
   const valid = isValidGameClock(clock);
-  const title = (
-    <span>
-      Foul — {team.name || `Team ${side}`}{' '}
+
+  const availableTypes: FoulType[] =
+    subject.kind === 'player' ? PLAYER_TYPES : ['technical'];
+
+  let chip: JSX.Element;
+  let titleText: string;
+  if (subject.kind === 'player' && player) {
+    titleText = 'Foul';
+    chip = (
       <span
         className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-lg font-mono font-bold"
         style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
       >
         #{player.number}
+        {player.name && (
+          <span className="ml-1 text-xs opacity-80 font-sans">
+            {player.name}
+          </span>
+        )}
       </span>
-      {player.name && <span className="ml-2 text-muted-fg">{player.name}</span>}
+    );
+  } else {
+    titleText = 'Technical foul';
+    chip = (
+      <span
+        className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-lg text-xs font-bold tracking-widest uppercase"
+        style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
+      >
+        {subject.kind === 'coach' ? 'Coach' : 'Bench'}
+      </span>
+    );
+  }
+
+  const title = (
+    <span>
+      {titleText} — {team.name || `Team ${side}`} {chip}
     </span>
   );
+
+  const subtitle =
+    subject.kind === 'player'
+      ? `Quarter ${game.currentQuarter} — tap a foul type to log`
+      : `Quarter ${game.currentQuarter} — does not count toward team fouls`;
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={title}
-      subtitle={`Quarter ${game.currentQuarter} · tap a foul type to log`}
+      subtitle={subtitle}
       size="lg"
     >
       <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
         <GameClockInput value={clock} onChange={setClock} />
-        <div className="grid grid-cols-1 gap-3 w-[280px]">
-          {FOUL_TYPES.map(t => (
+        <div
+          className={cn(
+            'grid gap-3',
+            availableTypes.length === 1 ? 'grid-cols-1 w-[280px]' : 'grid-cols-1 w-[280px]'
+          )}
+        >
+          {availableTypes.map(t => (
             <button
               key={t}
               type="button"

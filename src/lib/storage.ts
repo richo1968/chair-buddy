@@ -25,6 +25,18 @@ function migrateEvent(e: GameEvent): GameEvent {
     if (legacy === 'benchA') return { ...e, target: 'teamA' };
     if (legacy === 'benchB') return { ...e, target: 'teamB' };
   }
+  if (e.kind === 'foul') {
+    const legacyFoul = e as unknown as {
+      playerId?: string;
+      on?: { kind: string };
+    };
+    if (!legacyFoul.on && legacyFoul.playerId) {
+      return {
+        ...e,
+        on: { kind: 'player', playerId: legacyFoul.playerId }
+      };
+    }
+  }
   return e;
 }
 

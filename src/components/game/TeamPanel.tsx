@@ -1,8 +1,10 @@
 import { Users, Palette } from 'lucide-react';
-import type { Game, Side } from '@/types';
+import type { FoulSubject, Game, Side } from '@/types';
 import { PlayerTile } from './PlayerTile';
+import { StaffChip } from './StaffChip';
 import {
-  foulsForPlayer,
+  coachStatus,
+  playerFoulStats,
   teamFoulsForQuarter
 } from '@/lib/game';
 import { cn } from '@/lib/utils';
@@ -10,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface Props {
   game: Game;
   side: Side;
-  onPlayerTap: (playerId: string) => void;
+  onFoulSubject: (subject: FoulSubject) => void;
   onOpenPlayers: () => void;
   onOpenColours: () => void;
 }
@@ -18,16 +20,18 @@ interface Props {
 export function TeamPanel({
   game,
   side,
-  onPlayerTap,
+  onFoulSubject,
   onOpenPlayers,
   onOpenColours
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
   const teamFouls = teamFoulsForQuarter(game, side, game.currentQuarter);
   const inBonus = teamFouls >= 5;
+  const coach = coachStatus(game, side);
+  const benchWarning = !coach.ejected && coach.coachTechs + coach.benchTechs >= 2;
 
   return (
-    <div className="flex flex-col gap-3 h-full min-w-0">
+    <div className="flex flex-col gap-2 h-full min-w-0">
       <button
         type="button"
         onClick={onOpenColours}
@@ -47,7 +51,7 @@ export function TeamPanel({
 
       <div
         className={cn(
-          'rounded-2xl border flex items-center justify-between px-4 py-2',
+          'rounded-2xl border flex items-center justify-between px-4 py-1.5',
           inBonus
             ? 'bg-warn/20 border-warn text-warn'
             : 'bg-surface border-border text-fg'
@@ -62,6 +66,25 @@ export function TeamPanel({
         </div>
       </div>
 
+      <div className="flex gap-2">
+        <StaffChip
+          label="COACH"
+          techs={coach.coachTechs}
+          ejected={coach.ejected}
+          jerseyColour={team.jerseyColour}
+          numberColour={team.numberColour}
+          onClick={() => onFoulSubject({ kind: 'coach' })}
+        />
+        <StaffChip
+          label="BENCH"
+          techs={coach.benchTechs}
+          warning={benchWarning && !coach.ejected}
+          jerseyColour={team.jerseyColour}
+          numberColour={team.numberColour}
+          onClick={() => onFoulSubject({ kind: 'bench' })}
+        />
+      </div>
+
       <div className="flex-1 min-h-0">
         {team.players.length === 0 ? (
           <div className="h-full rounded-2xl border border-dashed border-border flex items-center justify-center text-sm text-muted-fg p-4 text-center">
@@ -73,10 +96,12 @@ export function TeamPanel({
               <PlayerTile
                 key={p.id}
                 player={p}
-                fouls={foulsForPlayer(game, p.id)}
+                stats={playerFoulStats(game, p.id)}
                 jerseyColour={team.jerseyColour}
                 numberColour={team.numberColour}
-                onClick={() => onPlayerTap(p.id)}
+                onClick={() =>
+                  onFoulSubject({ kind: 'player', playerId: p.id })
+                }
               />
             ))}
           </div>

@@ -140,24 +140,26 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
           {event.kind === 'foul' && (
             <div className="space-y-2">
               <div className="text-sm text-muted-fg">Foul type</div>
-              {(['personal', 'technical', 'unsportsmanlike', 'disqualifying'] as FoulType[]).map(
-                t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setFoulType(t)}
-                    className={cn(
-                      'w-full rounded-2xl border-2 px-3 py-3 text-base font-semibold text-left',
-                      'active:brightness-110 transition-none',
-                      foulType === t
-                        ? 'border-accent bg-surface-hi'
-                        : 'border-border bg-surface'
-                    )}
-                  >
-                    {FOUL_TYPE_LABEL[t]}
-                  </button>
-                )
-              )}
+              {(
+                (event.on.kind === 'player'
+                  ? ['personal', 'technical', 'unsportsmanlike', 'disqualifying']
+                  : ['technical']) as FoulType[]
+              ).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFoulType(t)}
+                  className={cn(
+                    'w-full rounded-2xl border-2 px-3 py-3 text-base font-semibold text-left',
+                    'active:brightness-110 transition-none',
+                    foulType === t
+                      ? 'border-accent bg-surface-hi'
+                      : 'border-border bg-surface'
+                  )}
+                >
+                  {FOUL_TYPE_LABEL[t]}
+                </button>
+              ))}
             </div>
           )}
 
