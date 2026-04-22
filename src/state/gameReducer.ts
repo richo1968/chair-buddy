@@ -223,12 +223,18 @@ export function reducer(state: AppState, action: Action): AppState {
           teamAScore: action.teamAScore,
           teamBScore: action.teamBScore
         };
+        const totalA = quarterScores.reduce((s, qs) => s + qs.teamAScore, 0);
+        const totalB = quarterScores.reduce((s, qs) => s + qs.teamBScore, 0);
+        const currentQ = g.currentQuarter;
+        const needsTieToAdvance =
+          currentQ === 'Q4' || currentQ.startsWith('OT');
+        const shouldAdvance = !needsTieToAdvance || totalA === totalB;
         return touch({
           ...g,
           quarterScores,
           events: [...g.events, event],
-          currentQuarter: nextQuarter(g.currentQuarter),
-          lastGameClock: DEFAULT_CLOCK
+          currentQuarter: shouldAdvance ? nextQuarter(currentQ) : currentQ,
+          lastGameClock: shouldAdvance ? DEFAULT_CLOCK : action.gameClock
         });
       });
 

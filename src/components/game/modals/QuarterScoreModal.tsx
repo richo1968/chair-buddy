@@ -3,6 +3,7 @@ import type { Game } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { GameClockInput, isValidGameClock, ZERO_CLOCK } from '@/components/GameClockInput';
+import { nextQuarter, totalScore } from '@/lib/game';
 
 interface Props {
   open: boolean;
@@ -43,12 +44,31 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
   const isHalftime =
     game.currentQuarter === 'Q2' && game.possessionArrow !== null;
 
+  const currentQ = game.currentQuarter;
+  const needsTieToAdvance =
+    currentQ === 'Q4' || currentQ.startsWith('OT');
+  const projectedA = totalScore(game, 'A') - (existing?.teamAScore ?? 0) + numA;
+  const projectedB = totalScore(game, 'B') - (existing?.teamBScore ?? 0) + numB;
+  const projectedTied = valid && projectedA === projectedB;
+  const nextQ = nextQuarter(currentQ);
+
+  let subtitle: string;
+  if (!needsTieToAdvance) {
+    subtitle = `Logs the score, advances to ${nextQ}, and resets the clock to 10:00.`;
+  } else if (!valid) {
+    subtitle = `If tied, advances to ${nextQ}. Otherwise the game ends.`;
+  } else if (projectedTied) {
+    subtitle = `Scores level at ${projectedA}–${projectedB}. Will advance to ${nextQ}.`;
+  } else {
+    subtitle = `${projectedA}–${projectedB} — not level. Game will end on commit (no ${nextQ}).`;
+  }
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Record ${game.currentQuarter} score`}
-      subtitle="Logs the score, advances to the next quarter, and resets the clock to 10:00."
+      title={`Record ${currentQ} score`}
+      subtitle={subtitle}
       size="lg"
       footer={
         <>
