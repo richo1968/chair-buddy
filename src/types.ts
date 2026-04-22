@@ -34,6 +34,7 @@ export interface PossessionChangeEvent extends EventBase {
   kind: 'possessionChange';
   newTeam: Side;
   newArrowDirection: ArrowDirection;
+  halftimeFlip?: boolean;
 }
 
 export type FoulSubject =

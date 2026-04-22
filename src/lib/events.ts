@@ -97,6 +97,9 @@ function describeWarning(e: WarningEvent, game: Game): string {
 }
 
 function describePossession(e: PossessionChangeEvent, game: Game): string {
+  if (e.halftimeFlip) {
+    return `Halftime — arrow flipped to ${e.newArrowDirection}. Possession stays with ${teamName(game, e.newTeam)}.`;
+  }
   return `Possession → ${teamName(game, e.newTeam)} (arrow ${e.newArrowDirection})`;
 }
 

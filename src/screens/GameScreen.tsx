@@ -142,7 +142,8 @@ export function GameScreen() {
         gameClock,
         wallTimestamp: Date.now(),
         newTeam: activeGame.possessionArrow,
-        newArrowDirection: flippedDirection
+        newArrowDirection: flippedDirection,
+        halftimeFlip: true
       };
       dispatch({ type: 'ADD_EVENT', event });
     }
