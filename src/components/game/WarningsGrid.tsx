@@ -1,61 +1,34 @@
-import type { Game, WarningTarget, WarningType } from '@/types';
-import { cn } from '@/lib/utils';
-import { warningTargetSide } from '@/lib/events';
+import { AlertTriangle } from 'lucide-react';
+import type { WarningType } from '@/types';
+import { WARNING_TYPES, WARNING_TYPE_SHORT } from '@/lib/events';
 
 interface Props {
-  game: Game;
-  onTap: (target: WarningTarget, type: WarningType) => void;
+  onTap: (type: WarningType) => void;
 }
 
-const BUTTONS: Array<{
-  target: WarningTarget;
-  type: WarningType;
-  label: string;
-}> = [
-  { target: 'teamA', type: 'general', label: 'Team · Warning' },
-  { target: 'teamA', type: 'time-delay', label: 'Team · Time-delay' },
-  { target: 'benchA', type: 'general', label: 'Bench · Warning' },
-  { target: 'benchA', type: 'time-delay', label: 'Bench · Time-delay' },
-  { target: 'teamB', type: 'general', label: 'Team · Warning' },
-  { target: 'teamB', type: 'time-delay', label: 'Team · Time-delay' },
-  { target: 'benchB', type: 'general', label: 'Bench · Warning' },
-  { target: 'benchB', type: 'time-delay', label: 'Bench · Time-delay' }
-];
-
-export function WarningsGrid({ game, onTap }: Props) {
+export function WarningsGrid({ onTap }: Props) {
   return (
     <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-border text-xs text-muted-fg uppercase tracking-wider">
+      <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-fg uppercase tracking-wider">
         Warnings
       </div>
-      <div className="grid grid-cols-2">
-        {BUTTONS.map(b => {
-          const side = warningTargetSide(b.target);
-          const colour =
-            side === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
-          const text =
-            side === 'A' ? game.teamA.numberColour : game.teamB.numberColour;
-          return (
-            <button
-              key={`${b.target}-${b.type}`}
-              type="button"
-              onClick={() => onTap(b.target, b.type)}
-              className={cn(
-                'border-r border-b border-border/60 last:border-r-0',
-                'px-3 py-2 text-left active:brightness-110 transition-none',
-                'flex flex-col gap-0.5'
-              )}
-              style={{ backgroundColor: colour, color: text }}
-            >
-              <span className="text-[10px] uppercase font-semibold opacity-80">
-                {side === 'A'
-                  ? game.teamA.name || 'Team A'
-                  : game.teamB.name || 'Team B'}
-              </span>
-              <span className="text-sm font-bold leading-tight">{b.label}</span>
-            </button>
-          );
-        })}
+      <div className="grid grid-cols-3">
+        {WARNING_TYPES.map((t, i) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onTap(t)}
+            className={[
+              'px-3 py-2 flex items-center justify-center gap-1.5',
+              'text-sm font-semibold text-muted-fg',
+              'active:bg-surface-hi active:text-fg transition-none',
+              i < WARNING_TYPES.length - 1 ? 'border-r border-border/60' : ''
+            ].join(' ')}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2.25} />
+            {WARNING_TYPE_SHORT[t]}
+          </button>
+        ))}
       </div>
     </div>
   );

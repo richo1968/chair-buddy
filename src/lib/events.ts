@@ -25,20 +25,31 @@ export const FOUL_TYPE_SHORT: Record<FoulType, string> = {
   disqualifying: 'D'
 };
 
+export const WARNING_TYPES: readonly WarningType[] = [
+  'general',
+  'time-delay',
+  'flop'
+];
+
 export const WARNING_TYPE_LABEL: Record<WarningType, string> = {
-  general: 'Warning',
-  'time-delay': 'Time-delay'
+  general: 'General warning',
+  'time-delay': 'Time-delay warning',
+  flop: 'Flop warning'
+};
+
+export const WARNING_TYPE_SHORT: Record<WarningType, string> = {
+  general: 'General',
+  'time-delay': 'Time-delay',
+  flop: 'Flop'
 };
 
 export const WARNING_TARGET_LABEL: Record<WarningTarget, string> = {
   teamA: 'Team A',
-  teamB: 'Team B',
-  benchA: 'Bench A',
-  benchB: 'Bench B'
+  teamB: 'Team B'
 };
 
 export function warningTargetSide(t: WarningTarget): Side {
-  return t === 'teamA' || t === 'benchA' ? 'A' : 'B';
+  return t === 'teamA' ? 'A' : 'B';
 }
 
 export function describeEvent(event: GameEvent, game: Game): string {
@@ -70,10 +81,8 @@ function describeFoul(e: FoulEvent, game: Game): string {
 
 function describeWarning(e: WarningEvent, game: Game): string {
   const side = warningTargetSide(e.target);
-  const isBench = e.target === 'benchA' || e.target === 'benchB';
-  const base = `${teamName(game, side)}${isBench ? ' bench' : ''}`;
-  const type = WARNING_TYPE_LABEL[e.warningType];
-  return `${type}: ${base}${e.note ? ` — ${e.note}` : ''}`;
+  const label = WARNING_TYPE_LABEL[e.warningType];
+  return `${label}: ${teamName(game, side)}${e.note ? ` — ${e.note}` : ''}`;
 }
 
 function describePossession(e: PossessionChangeEvent, game: Game): string {

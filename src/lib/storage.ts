@@ -1,4 +1,4 @@
-import type { Game, Team } from '@/types';
+import type { Game, GameEvent, Team } from '@/types';
 import { contrastText } from '@/lib/colours';
 
 const GAMES_KEY = 'scoretable-chair:games';
@@ -19,13 +19,24 @@ function migrateTeam(t: LegacyTeam | undefined): Team {
   };
 }
 
+function migrateEvent(e: GameEvent): GameEvent {
+  if (e.kind === 'warning') {
+    const legacy = e.target as unknown as string;
+    if (legacy === 'benchA') return { ...e, target: 'teamA' };
+    if (legacy === 'benchB') return { ...e, target: 'teamB' };
+  }
+  return e;
+}
+
 function migrateGame(g: LegacyGame): Game {
+  const base = g as Game;
   return {
-    ...(g as Game),
+    ...base,
     teamA: migrateTeam(g.teamA),
     teamB: migrateTeam(g.teamB),
     layout: g.layout ?? 'A-left',
-    finished: g.finished ?? false
+    finished: g.finished ?? false,
+    events: (base.events ?? []).map(migrateEvent)
   };
 }
 

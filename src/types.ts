@@ -18,8 +18,8 @@ export interface Team {
 export type BenchLayout = 'A-left' | 'A-right';
 
 export type FoulType = 'personal' | 'technical' | 'unsportsmanlike' | 'disqualifying';
-export type WarningType = 'general' | 'time-delay';
-export type WarningTarget = 'teamA' | 'teamB' | 'benchA' | 'benchB';
+export type WarningType = 'general' | 'time-delay' | 'flop';
+export type WarningTarget = 'teamA' | 'teamB';
 
 export interface EventBase {
   id: string;

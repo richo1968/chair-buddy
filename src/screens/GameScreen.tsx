@@ -33,14 +33,13 @@ import type {
 } from '@/types';
 
 type FoulTarget = { side: Side; playerId: string };
-type WarningCtx = { target: WarningTarget; type: WarningType };
 
 export function GameScreen() {
   const { dispatch, activeGame } = useApp();
   const [theme, toggleTheme] = useTheme();
 
   const [foulTarget, setFoulTarget] = useState<FoulTarget | null>(null);
-  const [warningCtx, setWarningCtx] = useState<WarningCtx | null>(null);
+  const [warningType, setWarningType] = useState<WarningType | null>(null);
   const [possessionOpen, setPossessionOpen] = useState(false);
   const [quarterScoreOpen, setQuarterScoreOpen] = useState(false);
   const [playersSide, setPlayersSide] = useState<Side | null>(null);
@@ -69,20 +68,24 @@ export function GameScreen() {
     setFoulTarget(null);
   };
 
-  const logWarning = (note: string | undefined, gameClock: string) => {
-    if (!warningCtx) return;
+  const logWarning = (
+    target: WarningTarget,
+    note: string | undefined,
+    gameClock: string
+  ) => {
+    if (!warningType) return;
     const event: GameEvent = {
       id: newId(),
       kind: 'warning',
       quarter: activeGame.currentQuarter,
       gameClock,
       wallTimestamp: Date.now(),
-      target: warningCtx.target,
-      warningType: warningCtx.type,
+      target,
+      warningType,
       note
     };
     dispatch({ type: 'ADD_EVENT', event });
-    setWarningCtx(null);
+    setWarningType(null);
   };
 
   const logPossession = (newDirection: Side, gameClock: string | null) => {
@@ -233,10 +236,7 @@ export function GameScreen() {
             <EventLog game={activeGame} onEventTap={setEditingEvent} />
           </div>
 
-          <WarningsGrid
-            game={activeGame}
-            onTap={(target, type) => setWarningCtx({ target, type })}
-          />
+          <WarningsGrid onTap={type => setWarningType(type)} />
         </section>
 
         <TeamPanel
@@ -260,13 +260,12 @@ export function GameScreen() {
           onCommit={logFoul}
         />
       )}
-      {warningCtx && (
+      {warningType && (
         <WarningModal
           open={true}
           game={activeGame}
-          target={warningCtx.target}
-          type={warningCtx.type}
-          onClose={() => setWarningCtx(null)}
+          type={warningType}
+          onClose={() => setWarningType(null)}
           onCommit={logWarning}
         />
       )}
