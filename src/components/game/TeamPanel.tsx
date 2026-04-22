@@ -38,7 +38,7 @@ export function TeamPanel({
   const timeouts = timeoutStatus(game, side);
 
   return (
-    <div className="flex flex-col gap-2 h-full min-w-0">
+    <div className="flex flex-col gap-2 h-full min-w-0 overflow-hidden">
       <button
         type="button"
         onClick={onOpenColours}
@@ -100,13 +100,13 @@ export function TeamPanel({
         />
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col gap-2">
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
         {team.players.length === 0 ? (
           <div className="shrink-0 rounded-2xl border border-dashed border-border flex items-center justify-center text-sm text-muted-fg p-3 text-center">
             No players yet. Tap "Manage players" to add.
           </div>
         ) : (
-          <div className="shrink-0 max-h-[50%] overflow-auto">
+          <div className="shrink-0 max-h-[45%] overflow-y-auto">
             <div className="grid grid-cols-4 gap-1.5 content-start">
               {team.players.map(p => (
                 <PlayerTile
@@ -123,9 +123,12 @@ export function TeamPanel({
             </div>
           </div>
         )}
-        <div className="flex-1 min-h-0">
-          <TeamEventLog game={game} side={side} onEventTap={onEventTap} />
-        </div>
+        <TeamEventLog
+          game={game}
+          side={side}
+          onEventTap={onEventTap}
+          className="flex-1 min-h-0"
+        />
       </div>
 
       <button

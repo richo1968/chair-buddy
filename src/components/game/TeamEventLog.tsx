@@ -15,6 +15,7 @@ interface Props {
   game: Game;
   side: Side;
   onEventTap: (event: GameEvent) => void;
+  className?: string;
 }
 
 function iconFor(ev: GameEvent): { Icon: LucideIcon; classes: string } {
@@ -32,18 +33,23 @@ function iconFor(ev: GameEvent): { Icon: LucideIcon; classes: string } {
   }
 }
 
-export function TeamEventLog({ game, side, onEventTap }: Props) {
+export function TeamEventLog({ game, side, onEventTap, className }: Props) {
   const events = sortEventsNewestFirst(
     game.events.filter(e => eventBelongsToTeam(e, side))
   );
 
   return (
-    <div className="h-full rounded-2xl border border-border bg-surface flex flex-col min-h-0 overflow-hidden">
-      <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-fg uppercase tracking-wider flex items-center justify-between">
+    <div
+      className={cn(
+        'rounded-2xl border border-border bg-surface flex flex-col min-h-0 overflow-hidden',
+        className
+      )}
+    >
+      <div className="shrink-0 px-3 py-1.5 border-b border-border text-[10px] text-muted-fg uppercase tracking-wider flex items-center justify-between">
         <span>Log</span>
         <span className="font-mono">{events.length}</span>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {events.length === 0 ? (
           <div className="px-3 py-3 text-xs text-muted-fg italic">
             No events yet.

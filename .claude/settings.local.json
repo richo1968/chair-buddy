@@ -28,7 +28,8 @@
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "Bash(curl -s http://localhost:5173/)",
       "Bash(curl -s \"http://localhost:5173/src/screens/GameScreen.tsx\")",
-      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: make warnings grid visible \\(brighter text, warn icons, larger buttons\\)\")"
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: make warnings grid visible \\(brighter text, warn icons, larger buttons\\)\")",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: team event log scrolls internally, overflow-hidden prevents panel growth\")"
     ]
   }
 }
