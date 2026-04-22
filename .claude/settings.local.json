@@ -23,7 +23,8 @@
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: event-kind icons in log for scannability \\(fouls/warnings/possession/quarter\\)\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: per-team event logs, timeouts, 1-minute timer with screen flash\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: per-team event log scroll + layout reclaims space for logs\")",
-      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: event modals default clock to 00:00 so keypresses are the recorded time\")"
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: event modals default clock to 00:00 so keypresses are the recorded time\")",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: centre section fills grid cell so warnings grid stays visible\")"
     ]
   }
 }
