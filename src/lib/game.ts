@@ -43,6 +43,7 @@ export function newGame(opts: {
     currentQuarter: 'Q1',
     possessionArrow: null,
     layout: opts.layout ?? 'A-left',
+    finished: false,
     lastGameClock: DEFAULT_CLOCK,
     events: [],
     quarterScores: [],

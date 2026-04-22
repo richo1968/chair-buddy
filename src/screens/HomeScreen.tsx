@@ -65,7 +65,13 @@ export function HomeScreen() {
                 <GameRow
                   key={g.id}
                   game={g}
-                  onOpen={() => dispatch({ type: 'OPEN_REVIEW', id: g.id })}
+                  onOpen={() =>
+                    dispatch(
+                      g.finished
+                        ? { type: 'OPEN_REVIEW', id: g.id }
+                        : { type: 'OPEN_GAME', id: g.id }
+                    )
+                  }
                   onDeleteRequest={() => setPendingDelete(g)}
                 />
               ))}
@@ -135,9 +141,19 @@ function GameRow({
           <ColourBadge hex={game.teamB.jerseyColour} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs text-muted-fg uppercase tracking-wider">
-            {game.date}
-            {game.division && <> · {game.division}</>}
+          <div className="text-xs text-muted-fg uppercase tracking-wider flex items-center gap-2">
+            <span>{game.date}</span>
+            {game.division && <span>· {game.division}</span>}
+            <span
+              className={cn(
+                'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border',
+                game.finished
+                  ? 'bg-muted text-muted-fg border-border'
+                  : 'bg-warn/15 text-warn border-warn/50'
+              )}
+            >
+              {game.finished ? 'Final' : 'Live'}
+            </span>
           </div>
           <div className="text-lg font-semibold truncate">
             {game.teamA.name || 'Team A'}{' '}

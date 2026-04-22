@@ -10,6 +10,7 @@ import {
 import { useApp } from '@/state/AppProvider';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { TeamPanel } from '@/components/game/TeamPanel';
 import { PossessionArrow } from '@/components/game/PossessionArrow';
 import { QuarterScoresTable } from '@/components/game/QuarterScoresTable';
@@ -45,6 +46,7 @@ export function GameScreen() {
   const [playersSide, setPlayersSide] = useState<Side | null>(null);
   const [coloursSide, setColoursSide] = useState<Side | null>(null);
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
+  const [endGameConfirm, setEndGameConfirm] = useState(false);
 
   if (!activeGame) return null;
 
@@ -179,7 +181,7 @@ export function GameScreen() {
         <Button
           variant="danger"
           size="md"
-          onClick={() => dispatch({ type: 'GO_HOME' })}
+          onClick={() => setEndGameConfirm(true)}
         >
           <Flag className="w-4 h-4" />
           End Game
@@ -301,6 +303,19 @@ export function GameScreen() {
         game={activeGame}
         event={editingEvent}
         onClose={() => setEditingEvent(null)}
+      />
+      <ConfirmDialog
+        open={endGameConfirm}
+        title="End this game?"
+        message="The game will be marked Final and open in read-only review mode. You can reopen it later if needed."
+        confirmLabel="End game"
+        danger
+        onCancel={() => setEndGameConfirm(false)}
+        onConfirm={() => {
+          setEndGameConfirm(false);
+          dispatch({ type: 'FINISH_GAME' });
+          dispatch({ type: 'OPEN_REVIEW', id: activeGame.id });
+        }}
       />
     </div>
   );

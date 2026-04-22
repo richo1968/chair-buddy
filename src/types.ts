@@ -75,6 +75,7 @@ export interface Game {
   currentQuarter: Quarter;
   possessionArrow: Side | null;
   layout: BenchLayout;
+  finished: boolean;
   lastGameClock: string;
   events: GameEvent[];
   quarterScores: QuarterScore[];

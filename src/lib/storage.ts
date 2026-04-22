@@ -24,7 +24,8 @@ function migrateGame(g: LegacyGame): Game {
     ...(g as Game),
     teamA: migrateTeam(g.teamA),
     teamB: migrateTeam(g.teamB),
-    layout: g.layout ?? 'A-left'
+    layout: g.layout ?? 'A-left',
+    finished: g.finished ?? false
   };
 }
 

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft } from 'lucide-react';
 import type { Game, Side, Team } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
 import { cn } from '@/lib/utils';
+import { useApp } from '@/state/AppProvider';
 
 interface Props {
   open: boolean;
@@ -16,61 +17,101 @@ interface Props {
 export function PossessionModal({ open, game, onClose, onCommit }: Props) {
   if (!open) return null;
   if (game.possessionArrow === null) {
-    return (
-      <InitialPossession game={game} onClose={onClose} onCommit={onCommit} />
-    );
+    return <InitialPossession game={game} onClose={onClose} />;
   }
   return <FlipPossession game={game} onClose={onClose} onCommit={onCommit} />;
 }
 
 function InitialPossession({
   game,
-  onClose,
-  onCommit
+  onClose
 }: {
   game: Game;
   onClose: () => void;
-  onCommit: (side: Side, clock: string | null) => void;
 }) {
-  const leftIsA = game.layout === 'A-left';
-  const leftSide: Side = leftIsA ? 'A' : 'B';
-  const rightSide: Side = leftIsA ? 'B' : 'A';
-  const leftTeam = leftIsA ? game.teamA : game.teamB;
-  const rightTeam = leftIsA ? game.teamB : game.teamA;
+  const { dispatch } = useApp();
+  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+
+  const title =
+    direction === null
+      ? 'Set initial possession arrow'
+      : `Arrow points ${direction.toUpperCase()} — which team?`;
+  const subtitle =
+    direction === null
+      ? 'Step 1 of 2 — which direction does the arrow point? No clock needed.'
+      : 'Step 2 of 2 — pick the team. Benches will reorient if needed.';
+
+  const commit = (team: Side) => {
+    if (!direction) return;
+    dispatch({ type: 'INITIAL_POSSESSION', team, direction });
+    onClose();
+  };
 
   return (
     <Modal
       open
       onClose={onClose}
-      title="Set initial possession arrow"
-      subtitle="Pre-game — no clock needed. Pick the direction the arrow points."
+      title={title}
+      subtitle={subtitle}
       size="md"
+      footer={
+        direction !== null ? (
+          <Button variant="ghost" onClick={() => setDirection(null)}>
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </Button>
+        ) : undefined
+      }
     >
-      <div className="space-y-3">
-        <InitialButton
-          direction="left"
-          team={leftTeam}
-          side={leftSide}
-          onClick={() => onCommit(leftSide, null)}
-        />
-        <InitialButton
-          direction="right"
-          team={rightTeam}
-          side={rightSide}
-          onClick={() => onCommit(rightSide, null)}
-        />
-      </div>
+      {direction === null ? (
+        <div className="grid grid-cols-2 gap-3">
+          <DirectionButton dir="left" onClick={() => setDirection('left')} />
+          <DirectionButton dir="right" onClick={() => setDirection('right')} />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <TeamButton team={game.teamA} side="A" onClick={() => commit('A')} />
+          <TeamButton team={game.teamB} side="B" onClick={() => commit('B')} />
+        </div>
+      )}
     </Modal>
   );
 }
 
-function InitialButton({
-  direction,
+function DirectionButton({
+  dir,
+  onClick
+}: {
+  dir: 'left' | 'right';
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-3xl border-2 border-danger bg-black text-danger',
+        'flex flex-col items-center justify-center gap-2 py-8',
+        'active:brightness-110 transition-none'
+      )}
+    >
+      {dir === 'left' ? (
+        <ArrowLeft className="w-16 h-16" strokeWidth={3.25} />
+      ) : (
+        <ArrowRight className="w-16 h-16" strokeWidth={3.25} />
+      )}
+      <span className="text-lg font-bold tracking-wide uppercase">
+        {dir}
+      </span>
+    </button>
+  );
+}
+
+function TeamButton({
   team,
   side,
   onClick
 }: {
-  direction: 'left' | 'right';
   team: Team;
   side: Side;
   onClick: () => void;
@@ -80,22 +121,17 @@ function InitialButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full rounded-2xl border-2 border-border p-4',
-        'flex items-center gap-4',
+        'w-full rounded-2xl border-2 border-border p-4 text-left',
         'active:brightness-110 transition-none'
       )}
       style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
     >
-      {direction === 'left' && <ArrowLeft className="w-10 h-10" strokeWidth={3} />}
-      <div className="flex-1 min-w-0 text-left">
-        <div className="text-[10px] uppercase tracking-widest opacity-70">
-          Arrow points {direction} · Team {side}
-        </div>
-        <div className="text-2xl font-bold truncate">
-          {team.name || `Team ${side}`}
-        </div>
+      <div className="text-[10px] uppercase tracking-widest opacity-70">
+        Team {side}
       </div>
-      {direction === 'right' && <ArrowRight className="w-10 h-10" strokeWidth={3} />}
+      <div className="text-2xl font-bold truncate">
+        {team.name || `Team ${side}`}
+      </div>
     </button>
   );
 }

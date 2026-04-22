@@ -24,8 +24,15 @@ export type Action =
   | { type: 'DELETE_EVENT'; eventId: string }
   | { type: 'SET_LAST_CLOCK'; clock: string }
   | { type: 'SET_POSSESSION'; arrow: Side | null }
+  | {
+      type: 'INITIAL_POSSESSION';
+      team: Side;
+      direction: 'left' | 'right';
+    }
   | { type: 'SET_LAYOUT'; layout: BenchLayout }
   | { type: 'SWAP_BENCHES' }
+  | { type: 'FINISH_GAME' }
+  | { type: 'REOPEN_GAME'; id: string }
   | { type: 'ADVANCE_QUARTER' }
   | { type: 'SET_QUARTER'; quarter: Quarter }
   | {
@@ -138,6 +145,32 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_POSSESSION':
       return mapActive(state, g => touch({ ...g, possessionArrow: action.arrow }));
+
+    case 'INITIAL_POSSESSION': {
+      const { team, direction } = action;
+      const layout: BenchLayout =
+        team === 'A'
+          ? direction === 'left'
+            ? 'A-left'
+            : 'A-right'
+          : direction === 'left'
+            ? 'A-right'
+            : 'A-left';
+      return mapActive(state, g =>
+        touch({ ...g, possessionArrow: team, layout })
+      );
+    }
+
+    case 'FINISH_GAME':
+      return mapActive(state, g => touch({ ...g, finished: true }));
+
+    case 'REOPEN_GAME':
+      return {
+        ...state,
+        games: state.games.map(g =>
+          g.id === action.id ? { ...g, finished: false, updatedAt: Date.now() } : g
+        )
+      };
 
     case 'SET_LAYOUT':
       return mapActive(state, g => touch({ ...g, layout: action.layout }));

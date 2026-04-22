@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Play } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { Button } from '@/components/ui/Button';
 
@@ -18,15 +18,35 @@ export function ReviewScreen() {
             <ArrowLeft className="w-4 h-4" />
             Home
           </Button>
-          <div className="text-sm text-muted-fg">
-            {activeGame.date}
-            {activeGame.division && ` · ${activeGame.division}`}
+          <div className="flex items-center gap-2">
+            {activeGame.finished ? (
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  dispatch({ type: 'REOPEN_GAME', id: activeGame.id });
+                  dispatch({ type: 'OPEN_GAME', id: activeGame.id });
+                }}
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reopen &amp; continue
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => dispatch({ type: 'OPEN_GAME', id: activeGame.id })}
+              >
+                <Play className="w-4 h-4" />
+                Resume
+              </Button>
+            )}
           </div>
         </header>
 
         <div className="rounded-3xl border border-border bg-surface p-8 text-center space-y-3">
           <div className="text-sm uppercase tracking-widest text-muted-fg">
-            Milestone 5 placeholder
+            {activeGame.finished ? 'Final' : 'Live — viewing only'}
           </div>
           <div className="text-3xl font-bold">
             Review: {activeGame.teamA.name || 'Team A'} vs {activeGame.teamB.name || 'Team B'}
