@@ -24,11 +24,7 @@ export type Action =
   | { type: 'DELETE_EVENT'; eventId: string }
   | { type: 'SET_LAST_CLOCK'; clock: string }
   | { type: 'SET_POSSESSION'; arrow: Side | null }
-  | {
-      type: 'INITIAL_POSSESSION';
-      team: Side;
-      direction: 'left' | 'right';
-    }
+  | { type: 'INITIAL_POSSESSION'; team: Side }
   | { type: 'SET_LAYOUT'; layout: BenchLayout }
   | { type: 'SWAP_BENCHES' }
   | { type: 'FINISH_GAME' }
@@ -146,20 +142,10 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_POSSESSION':
       return mapActive(state, g => touch({ ...g, possessionArrow: action.arrow }));
 
-    case 'INITIAL_POSSESSION': {
-      const { team, direction } = action;
-      const layout: BenchLayout =
-        team === 'A'
-          ? direction === 'left'
-            ? 'A-left'
-            : 'A-right'
-          : direction === 'left'
-            ? 'A-right'
-            : 'A-left';
+    case 'INITIAL_POSSESSION':
       return mapActive(state, g =>
-        touch({ ...g, possessionArrow: team, layout })
+        touch({ ...g, possessionArrow: action.team })
       );
-    }
 
     case 'FINISH_GAME':
       return mapActive(state, g => touch({ ...g, finished: true }));

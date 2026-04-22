@@ -38,12 +38,12 @@ function InitialPossession({
       : `Arrow points ${direction.toUpperCase()} — which team?`;
   const subtitle =
     direction === null
-      ? 'Step 1 of 2 — which direction does the arrow point? No clock needed.'
-      : 'Step 2 of 2 — pick the team. Benches will reorient if needed.';
+      ? 'Step 1 of 2 — which direction is the arrow facing on court?'
+      : 'Step 2 of 2 — which team has the next possession?';
 
+  const leftIsA = game.layout === 'A-left';
   const commit = (team: Side) => {
-    if (!direction) return;
-    dispatch({ type: 'INITIAL_POSSESSION', team, direction });
+    dispatch({ type: 'INITIAL_POSSESSION', team });
     onClose();
   };
 
@@ -70,8 +70,18 @@ function InitialPossession({
         </div>
       ) : (
         <div className="space-y-3">
-          <TeamButton team={game.teamA} side="A" onClick={() => commit('A')} />
-          <TeamButton team={game.teamB} side="B" onClick={() => commit('B')} />
+          <TeamButton
+            team={game.teamA}
+            side="A"
+            benchSide={leftIsA ? 'left' : 'right'}
+            onClick={() => commit('A')}
+          />
+          <TeamButton
+            team={game.teamB}
+            side="B"
+            benchSide={leftIsA ? 'right' : 'left'}
+            onClick={() => commit('B')}
+          />
         </div>
       )}
     </Modal>
@@ -110,10 +120,12 @@ function DirectionButton({
 function TeamButton({
   team,
   side,
+  benchSide,
   onClick
 }: {
   team: Team;
   side: Side;
+  benchSide: 'left' | 'right';
   onClick: () => void;
 }) {
   return (
@@ -122,16 +134,21 @@ function TeamButton({
       onClick={onClick}
       className={cn(
         'w-full rounded-2xl border-2 border-border p-4 text-left',
+        'flex items-center gap-3',
         'active:brightness-110 transition-none'
       )}
       style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
     >
-      <div className="text-[10px] uppercase tracking-widest opacity-70">
-        Team {side}
+      {benchSide === 'left' && <ArrowLeft className="w-5 h-5 opacity-70" />}
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] uppercase tracking-widest opacity-70">
+          Team {side} · bench on {benchSide}
+        </div>
+        <div className="text-2xl font-bold truncate">
+          {team.name || `Team ${side}`}
+        </div>
       </div>
-      <div className="text-2xl font-bold truncate">
-        {team.name || `Team ${side}`}
-      </div>
+      {benchSide === 'right' && <ArrowRight className="w-5 h-5 opacity-70" />}
     </button>
   );
 }
