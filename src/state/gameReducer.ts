@@ -47,7 +47,7 @@ export const initialState: AppState = {
   loaded: false
 };
 
-function touch(g: Game): Game {
+function touch<T extends { updatedAt: number }>(g: T): T {
   return { ...g, updatedAt: Date.now() };
 }
 
@@ -100,13 +100,18 @@ export function reducer(state: AppState, action: Action): AppState {
       };
 
     case 'ADD_EVENT':
-      return mapActive(state, g =>
-        touch({
+      return mapActive(state, g => {
+        const next: Game = {
           ...g,
           events: [...g.events, action.event],
-          lastGameClock: action.event.gameClock
-        })
-      );
+          lastGameClock: action.event.gameClock,
+          updatedAt: Date.now()
+        };
+        if (action.event.kind === 'possessionChange') {
+          next.possessionArrow = action.event.newDirection;
+        }
+        return next;
+      });
 
     case 'UPDATE_EVENT':
       return mapActive(state, g =>
@@ -189,7 +194,8 @@ export function reducer(state: AppState, action: Action): AppState {
           ...g,
           quarterScores,
           events: [...g.events, event],
-          lastGameClock: action.gameClock
+          currentQuarter: nextQuarter(g.currentQuarter),
+          lastGameClock: DEFAULT_CLOCK
         });
       });
 

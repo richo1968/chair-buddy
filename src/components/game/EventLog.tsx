@@ -1,0 +1,56 @@
+import type { Game, GameEvent } from '@/types';
+import { describeEvent, eventSideTint } from '@/lib/events';
+import { sortEvents } from '@/lib/game';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  game: Game;
+  onEventTap: (event: GameEvent) => void;
+}
+
+export function EventLog({ game, onEventTap }: Props) {
+  const events = sortEvents(game.events);
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface flex flex-col min-h-0 overflow-hidden">
+      <div className="px-3 py-2 border-b border-border text-xs text-muted-fg uppercase tracking-wider flex items-center justify-between">
+        <span>Event log</span>
+        <span className="font-mono">{events.length}</span>
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto">
+        {events.length === 0 ? (
+          <div className="px-3 py-4 text-sm text-muted-fg italic">
+            No events logged yet.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {events.map(ev => {
+              const tint = eventSideTint(ev, game);
+              return (
+                <li key={ev.id}>
+                  <button
+                    type="button"
+                    onClick={() => onEventTap(ev)}
+                    className="w-full text-left px-3 py-2 flex items-center gap-3 active:bg-surface-hi transition-none"
+                  >
+                    <span
+                      aria-hidden
+                      className="w-1.5 h-9 rounded-full shrink-0"
+                      style={{ backgroundColor: tint ?? 'transparent' }}
+                    />
+                    <span className="text-xs font-mono text-muted-fg w-[64px] tabular-nums shrink-0">
+                      {ev.quarter} · {ev.gameClock}
+                    </span>
+                    <span className={cn('text-sm flex-1 truncate')}>
+                      {describeEvent(ev, game)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
