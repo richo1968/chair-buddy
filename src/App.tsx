@@ -1,4 +1,5 @@
 import { AppProvider, useApp } from '@/state/AppProvider';
+import { AuthProvider, useAuth } from '@/state/AuthProvider';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { NewGameScreen } from '@/screens/NewGameScreen';
 import { GameScreen } from '@/screens/GameScreen';
@@ -6,7 +7,8 @@ import { ReviewScreen } from '@/screens/ReviewScreen';
 
 function Router() {
   const { state } = useApp();
-  if (!state.loaded) {
+  const { loading: authLoading } = useAuth();
+  if (authLoading || !state.loaded) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-bg text-fg">
         <div className="text-muted-fg">Loading…</div>
@@ -27,8 +29,10 @@ function Router() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <Router />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <Router />
+      </AppProvider>
+    </AuthProvider>
   );
 }

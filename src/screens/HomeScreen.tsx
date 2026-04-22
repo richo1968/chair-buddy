@@ -1,41 +1,77 @@
 import { useState } from 'react';
-import { Plus, Moon, Sun, Trash2 } from 'lucide-react';
+import { Plus, Moon, Sun, Trash2, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
+import { useAuth } from '@/state/AuthProvider';
 import { useTheme } from '@/hooks/useTheme';
 import { useLongPress } from '@/hooks/useLongPress';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { LoginModal } from '@/components/auth/LoginModal';
 import { totalScore } from '@/lib/game';
 import type { Game } from '@/types';
 import { cn } from '@/lib/utils';
 
 export function HomeScreen() {
   const { state, dispatch } = useApp();
+  const { user, cloudEnabled, signOut } = useAuth();
   const [theme, toggleTheme] = useTheme();
   const [pendingDelete, setPendingDelete] = useState<Game | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const games = [...state.games].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
     <div className="min-h-full w-full bg-bg text-fg p-6 overflow-auto">
       <div className="max-w-5xl mx-auto">
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-8 gap-3 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Scoretable</h1>
             <div className="text-sm text-muted-fg mt-1">FIBA event logger</div>
           </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className="tap-target rounded-2xl border border-border bg-surface flex items-center justify-center active:brightness-125 transition-none"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {cloudEnabled &&
+              (user ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2">
+                  <Cloud className="w-4 h-4 text-success" />
+                  <div className="min-w-0 max-w-[180px]">
+                    <div className="text-[10px] text-muted-fg uppercase tracking-widest">
+                      Cloud synced
+                    </div>
+                    <div className="text-xs truncate">{user.email}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    aria-label="Sign out"
+                    className="h-8 w-8 rounded-lg border border-border bg-muted flex items-center justify-center active:brightness-125 transition-none"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setLoginOpen(true)}
+                  className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2 active:brightness-125 transition-none text-sm font-semibold"
+                >
+                  <CloudOff className="w-4 h-4 text-muted-fg" />
+                  <LogIn className="w-4 h-4" />
+                  Sign in to sync
+                </button>
+              ))}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className="tap-target rounded-2xl border border-border bg-surface flex items-center justify-center active:brightness-125 transition-none"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </header>
 
         <Button
@@ -79,6 +115,8 @@ export function HomeScreen() {
           )}
         </div>
       </div>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       <ConfirmDialog
         open={!!pendingDelete}
