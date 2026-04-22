@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
   GameClockInput,
+  ZERO_CLOCK,
   isValidGameClock
 } from '@/components/GameClockInput';
 import { timeoutStatus } from '@/lib/game';
@@ -27,7 +28,7 @@ export function TimeoutModal({
   onCancelTimer
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
-  const [clock, setClock] = useState(game.lastGameClock);
+  const [clock, setClock] = useState(ZERO_CLOCK);
 
   if (!open) return null;
 

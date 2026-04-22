@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, ChevronLeft } from 'lucide-react';
 import type { Game, Side, Team } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
+import { GameClockInput, ZERO_CLOCK, isValidGameClock } from '@/components/GameClockInput';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/state/AppProvider';
 
@@ -147,7 +147,7 @@ function FlipPossession({
 }) {
   const flipTarget: Side = game.possessionArrow === 'A' ? 'B' : 'A';
   const [choice, setChoice] = useState<Side>(flipTarget);
-  const [clock, setClock] = useState(game.lastGameClock);
+  const [clock, setClock] = useState(ZERO_CLOCK);
 
   const valid = isValidGameClock(clock);
 

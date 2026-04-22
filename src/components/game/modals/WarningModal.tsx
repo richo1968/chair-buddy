@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Game, WarningTarget, WarningType } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
+import { GameClockInput, ZERO_CLOCK, isValidGameClock } from '@/components/GameClockInput';
 import { WARNING_TYPE_LABEL } from '@/lib/events';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function WarningModal({ open, game, type, onClose, onCommit }: Props) {
-  const [clock, setClock] = useState(game.lastGameClock);
+  const [clock, setClock] = useState(ZERO_CLOCK);
   const [note, setNote] = useState('');
   const [target, setTarget] = useState<WarningTarget | null>(null);
 

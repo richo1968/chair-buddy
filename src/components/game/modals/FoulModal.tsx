@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FoulSubject, FoulType, Game, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
-import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
+import { GameClockInput, ZERO_CLOCK, isValidGameClock } from '@/components/GameClockInput';
 import { FOUL_TYPE_LABEL } from '@/lib/events';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +35,7 @@ export function FoulModal({
       ? team.players.find(p => p.id === subject.playerId)
       : null;
 
-  const [clock, setClock] = useState(game.lastGameClock);
+  const [clock, setClock] = useState(ZERO_CLOCK);
 
   if (!open) return null;
   if (subject.kind === 'player' && !player) return null;
