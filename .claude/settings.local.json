@@ -34,7 +34,8 @@
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: initial possession leaves bench layout alone, shows bench side in team picker\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"ui: in-game arrow change shows pre-selected defaults prominently \\(ring+check\\)\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: conditionally render modals so defaults recompute on each open\")",
-      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: halftime arrow flip logged with clear note that possession stays\")"
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: halftime arrow flip logged with clear note that possession stays\")",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat\\(m5\\): review screen with quarter scores, foul summary, event log, text export\")"
     ]
   }
 }
