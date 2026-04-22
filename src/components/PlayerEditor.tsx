@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
-import { newId } from '@/lib/game';
+import { newId, sortPlayers } from '@/lib/game';
 
 interface Props {
   players: Player[];
@@ -126,7 +126,7 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {players.map(p =>
+          {sortPlayers(players).map(p =>
             editingId === p.id ? (
               <div
                 key={p.id}

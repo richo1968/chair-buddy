@@ -130,6 +130,28 @@ export function totalScore(game: Game, side: Side): number {
   );
 }
 
+export function compareJerseyNumbers(a: string, b: string): number {
+  const aT = a.trim();
+  const bT = b.trim();
+  if (aT === bT) return 0;
+  // FIBA convention: "00" sits before "0", before 1, 2, ...
+  if (aT === '00') return -1;
+  if (bT === '00') return 1;
+  const aN = parseInt(aT, 10);
+  const bN = parseInt(bT, 10);
+  if (isNaN(aN) && isNaN(bN)) return aT.localeCompare(bT);
+  if (isNaN(aN)) return 1;
+  if (isNaN(bN)) return -1;
+  if (aN !== bN) return aN - bN;
+  return aT.localeCompare(bT);
+}
+
+export function sortPlayers<T extends { number: string }>(
+  players: readonly T[]
+): T[] {
+  return [...players].sort((a, b) => compareJerseyNumbers(a.number, b.number));
+}
+
 export function foulsForPlayer(game: Game, playerId: string): number {
   return game.events.filter(
     e =>

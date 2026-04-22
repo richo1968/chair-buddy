@@ -17,6 +17,7 @@ import {
   playerFoulStats,
   quarterOrder,
   sortEvents,
+  sortPlayers,
   totalScore
 } from '@/lib/game';
 import { describeEvent } from '@/lib/events';
@@ -238,7 +239,7 @@ function PlayerFoulList({ game, side }: { game: Game; side: Side }) {
         <div className="text-sm text-muted-fg italic">(no players)</div>
       ) : (
         <ul className="divide-y divide-border/60">
-          {team.players.map(p => {
+          {sortPlayers(team.players).map(p => {
             const stats = playerFoulStats(game, p.id);
             return (
               <li

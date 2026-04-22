@@ -6,6 +6,7 @@ import { TeamEventLog } from './TeamEventLog';
 import {
   coachStatus,
   playerFoulStats,
+  sortPlayers,
   teamFoulsForQuarter,
   timeoutStatus
 } from '@/lib/game';
@@ -108,7 +109,7 @@ export function TeamPanel({
         ) : (
           <div className="shrink-0 max-h-[45%] overflow-y-auto">
             <div className="grid grid-cols-4 gap-1.5 content-start">
-              {team.players.map(p => (
+              {sortPlayers(team.players).map(p => (
                 <PlayerTile
                   key={p.id}
                   player={p}

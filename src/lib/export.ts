@@ -4,6 +4,7 @@ import {
   playerFoulStats,
   quarterOrder,
   sortEvents,
+  sortPlayers,
   totalScore
 } from './game';
 import { describeEvent } from './events';
@@ -76,7 +77,7 @@ export function exportGameAsText(game: Game): string {
     if (team.players.length === 0) {
       lines.push('  (no players)');
     } else {
-      for (const p of team.players) {
+      for (const p of sortPlayers(team.players)) {
         const stats = playerFoulStats(game, p.id);
         const tag = `#${p.number}${p.name ? ' ' + p.name : ''}`;
         const breakdown = [
