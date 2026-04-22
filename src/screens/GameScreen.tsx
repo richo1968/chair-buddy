@@ -241,7 +241,7 @@ export function GameScreen() {
           onEventTap={setEditingEvent}
         />
 
-        <section className="flex flex-col gap-3 min-h-0 h-full overflow-hidden">
+        <section className="flex flex-col gap-3 min-h-0 h-full">
           <div className="rounded-2xl border border-border bg-surface px-4 py-2 flex items-center justify-between">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-muted-fg">
