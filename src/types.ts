@@ -10,9 +10,12 @@ export interface Player {
 
 export interface Team {
   name: string;
-  colour: string;
+  jerseyColour: string;
+  numberColour: string;
   players: Player[];
 }
+
+export type BenchLayout = 'A-left' | 'A-right';
 
 export type FoulType = 'personal' | 'technical' | 'unsportsmanlike' | 'disqualifying';
 export type WarningType = 'general' | 'time-delay';
@@ -71,6 +74,7 @@ export interface Game {
   teamB: Team;
   currentQuarter: Quarter;
   possessionArrow: Side | null;
+  layout: BenchLayout;
   lastGameClock: string;
   events: GameEvent[];
   quarterScores: QuarterScore[];

@@ -131,8 +131,8 @@ function GameRow({
         )}
       >
         <div className="flex flex-col gap-1">
-          <ColourBadge hex={game.teamA.colour} />
-          <ColourBadge hex={game.teamB.colour} />
+          <ColourBadge hex={game.teamA.jerseyColour} />
+          <ColourBadge hex={game.teamB.jerseyColour} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-xs text-muted-fg uppercase tracking-wider">

@@ -1,5 +1,6 @@
 import type {
   AppState,
+  BenchLayout,
   Game,
   GameEvent,
   Player,
@@ -23,6 +24,8 @@ export type Action =
   | { type: 'DELETE_EVENT'; eventId: string }
   | { type: 'SET_LAST_CLOCK'; clock: string }
   | { type: 'SET_POSSESSION'; arrow: Side | null }
+  | { type: 'SET_LAYOUT'; layout: BenchLayout }
+  | { type: 'SWAP_BENCHES' }
   | { type: 'ADVANCE_QUARTER' }
   | { type: 'SET_QUARTER'; quarter: Quarter }
   | {
@@ -130,6 +133,14 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_POSSESSION':
       return mapActive(state, g => touch({ ...g, possessionArrow: action.arrow }));
+
+    case 'SET_LAYOUT':
+      return mapActive(state, g => touch({ ...g, layout: action.layout }));
+
+    case 'SWAP_BENCHES':
+      return mapActive(state, g =>
+        touch({ ...g, layout: g.layout === 'A-left' ? 'A-right' : 'A-left' })
+      );
 
     case 'ADVANCE_QUARTER':
       return mapActive(state, g =>

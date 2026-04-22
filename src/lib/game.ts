@@ -1,5 +1,6 @@
-import type { Game, GameEvent, Quarter, Side, Team } from '@/types';
+import type { BenchLayout, Game, GameEvent, Quarter, Side, Team } from '@/types';
 import { DEFAULT_CLOCK } from '@/components/GameClockInput';
+import { contrastText } from '@/lib/colours';
 
 export function newId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -16,8 +17,13 @@ export function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
-export function blankTeam(colour: string): Team {
-  return { name: '', colour, players: [] };
+export function blankTeam(jerseyColour: string): Team {
+  return {
+    name: '',
+    jerseyColour,
+    numberColour: contrastText(jerseyColour),
+    players: []
+  };
 }
 
 export function newGame(opts: {
@@ -25,6 +31,7 @@ export function newGame(opts: {
   division: string;
   teamA: Team;
   teamB: Team;
+  layout?: BenchLayout;
 }): Game {
   const now = Date.now();
   return {
@@ -35,6 +42,7 @@ export function newGame(opts: {
     teamB: opts.teamB,
     currentQuarter: 'Q1',
     possessionArrow: null,
+    layout: opts.layout ?? 'A-left',
     lastGameClock: DEFAULT_CLOCK,
     events: [],
     quarterScores: [],
