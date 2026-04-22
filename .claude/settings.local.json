@@ -35,7 +35,12 @@
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"ui: in-game arrow change shows pre-selected defaults prominently \\(ring+check\\)\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"fix: conditionally render modals so defaults recompute on each open\")",
       "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat: halftime arrow flip logged with clear note that possession stays\")",
-      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat\\(m5\\): review screen with quarter scores, foul summary, event log, text export\")"
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat\\(m5\\): review screen with quarter scores, foul summary, event log, text export\")",
+      "Bash(npm uninstall *)",
+      "Bash(node scripts/gen-icons.mjs)",
+      "Bash(curl -s http://localhost:4173/manifest.webmanifest)",
+      "Bash(curl -s -I http://localhost:4173/sw.js)",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"feat\\(m6\\): manual PWA setup - manifest, service worker, icons\")"
     ]
   }
 }
