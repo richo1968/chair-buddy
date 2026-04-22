@@ -38,7 +38,7 @@ export function TeamEventLog({ game, side, onEventTap }: Props) {
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-surface flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full rounded-2xl border border-border bg-surface flex flex-col min-h-0 overflow-hidden">
       <div className="px-3 py-1.5 border-b border-border text-[10px] text-muted-fg uppercase tracking-wider flex items-center justify-between">
         <span>Log</span>
         <span className="font-mono">{events.length}</span>
