@@ -10,6 +10,14 @@ interface Props {
   accent: string;
 }
 
+const isDuplicate = (players: Player[], number: string, excludeId?: string) => {
+  const target = number.trim();
+  if (!target) return false;
+  return players.some(
+    p => p.id !== excludeId && p.number.trim() === target
+  );
+};
+
 export function PlayerEditor({ players, onChange, accent }: Props) {
   const [num, setNum] = useState('');
   const [name, setName] = useState('');
@@ -17,14 +25,20 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
   const [editNum, setEditNum] = useState('');
   const [editName, setEditName] = useState('');
 
+  const addDup = isDuplicate(players, num);
+  const canAdd = num.trim().length > 0 && !addDup;
+
+  const editDup =
+    editingId !== null && isDuplicate(players, editNum, editingId);
+  const canSaveEdit = editNum.trim().length > 0 && !editDup;
+
   const add = () => {
-    const cleanNum = num.trim();
-    if (!cleanNum) return;
+    if (!canAdd) return;
     onChange([
       ...players,
       {
         id: newId(),
-        number: cleanNum,
+        number: num.trim(),
         name: name.trim() || undefined
       }
     ]);
@@ -43,13 +57,11 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
   };
 
   const saveEdit = () => {
-    if (!editingId) return;
-    const cleanNum = editNum.trim();
-    if (!cleanNum) return;
+    if (!editingId || !canSaveEdit) return;
     onChange(
       players.map(p =>
         p.id === editingId
-          ? { ...p, number: cleanNum, name: editName.trim() || undefined }
+          ? { ...p, number: editNum.trim(), name: editName.trim() || undefined }
           : p
       )
     );
@@ -71,7 +83,10 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
             onKeyDown={e => e.key === 'Enter' && add()}
             placeholder="00"
             maxLength={3}
-            className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 font-mono text-lg text-center"
+            className={cn(
+              'h-12 w-full rounded-xl bg-surface-hi border px-3 font-mono text-lg text-center',
+              addDup ? 'border-danger' : 'border-border'
+            )}
           />
         </div>
         <div className="flex-1">
@@ -88,7 +103,7 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
         <button
           type="button"
           onClick={add}
-          disabled={!num.trim()}
+          disabled={!canAdd}
           aria-label="Add player"
           className={cn(
             'h-12 w-12 rounded-xl flex items-center justify-center text-bg font-bold',
@@ -99,6 +114,11 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
           <Plus className="w-5 h-5" />
         </button>
       </div>
+      {addDup && (
+        <div className="text-xs text-danger">
+          #{num.trim()} is already taken on this team.
+        </div>
+      )}
 
       {players.length === 0 ? (
         <div className="text-sm text-muted-fg italic py-2">
@@ -110,41 +130,55 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
             editingId === p.id ? (
               <div
                 key={p.id}
-                className="flex items-center gap-1 rounded-xl bg-surface-hi border border-accent p-1"
+                className={cn(
+                  'flex flex-col gap-1 rounded-xl bg-surface-hi border p-1',
+                  editDup ? 'border-danger' : 'border-accent'
+                )}
               >
-                <input
-                  type="text"
-                  value={editNum}
-                  onChange={e => setEditNum(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveEdit()}
-                  className="h-10 w-14 rounded-lg bg-bg border border-border px-2 font-mono text-center"
-                  autoFocus
-                  maxLength={3}
-                />
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveEdit()}
-                  placeholder="Name"
-                  className="h-10 w-32 rounded-lg bg-bg border border-border px-2"
-                />
-                <button
-                  type="button"
-                  onClick={saveEdit}
-                  aria-label="Save"
-                  className="h-10 w-10 rounded-lg bg-success text-bg flex items-center justify-center active:brightness-110 transition-none"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  aria-label="Cancel"
-                  className="h-10 w-10 rounded-lg bg-muted border border-border flex items-center justify-center active:brightness-125 transition-none"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={editNum}
+                    onChange={e => setEditNum(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                    className={cn(
+                      'h-10 w-14 rounded-lg bg-bg border px-2 font-mono text-center',
+                      editDup ? 'border-danger' : 'border-border'
+                    )}
+                    autoFocus
+                    maxLength={3}
+                  />
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                    placeholder="Name"
+                    className="h-10 w-32 rounded-lg bg-bg border border-border px-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    disabled={!canSaveEdit}
+                    aria-label="Save"
+                    className="h-10 w-10 rounded-lg bg-success text-bg flex items-center justify-center active:brightness-110 transition-none disabled:opacity-40"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    aria-label="Cancel"
+                    className="h-10 w-10 rounded-lg bg-muted border border-border flex items-center justify-center active:brightness-125 transition-none"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {editDup && (
+                  <div className="text-xs text-danger px-1">
+                    #{editNum.trim()} is already taken.
+                  </div>
+                )}
               </div>
             ) : (
               <div
