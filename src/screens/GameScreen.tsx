@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -19,7 +19,6 @@ import { FoulModal } from '@/components/game/modals/FoulModal';
 import { WarningModal } from '@/components/game/modals/WarningModal';
 import { PossessionModal } from '@/components/game/modals/PossessionModal';
 import { QuarterScoreModal } from '@/components/game/modals/QuarterScoreModal';
-import { HalftimeArrowModal } from '@/components/game/modals/HalftimeArrowModal';
 import { PlayersModal } from '@/components/game/modals/PlayersModal';
 import { TeamColoursModal } from '@/components/game/modals/TeamColoursModal';
 import { EditEventModal } from '@/components/game/modals/EditEventModal';
@@ -43,24 +42,9 @@ export function GameScreen() {
   const [warningCtx, setWarningCtx] = useState<WarningCtx | null>(null);
   const [possessionOpen, setPossessionOpen] = useState(false);
   const [quarterScoreOpen, setQuarterScoreOpen] = useState(false);
-  const [halftimeOpen, setHalftimeOpen] = useState(false);
   const [playersSide, setPlayersSide] = useState<Side | null>(null);
   const [coloursSide, setColoursSide] = useState<Side | null>(null);
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
-
-  useEffect(() => {
-    if (!activeGame) return;
-    if (activeGame.currentQuarter === 'Q3' && !halftimeOpen) {
-      const alreadyPromptedKey = `halftimePromptedFor:${activeGame.id}`;
-      if (!sessionStorage.getItem(alreadyPromptedKey)) {
-        const hasQ2 = activeGame.quarterScores.some(qs => qs.quarter === 'Q2');
-        if (hasQ2) {
-          sessionStorage.setItem(alreadyPromptedKey, '1');
-          setHalftimeOpen(true);
-        }
-      }
-    }
-  }, [activeGame, halftimeOpen]);
 
   if (!activeGame) return null;
 
@@ -99,35 +83,48 @@ export function GameScreen() {
     setWarningCtx(null);
   };
 
-  const logPossession = (newDirection: Side, gameClock: string) => {
-    const event: GameEvent = {
-      id: newId(),
-      kind: 'possessionChange',
-      quarter: activeGame.currentQuarter,
-      gameClock,
-      wallTimestamp: Date.now(),
-      newDirection
-    };
-    dispatch({ type: 'ADD_EVENT', event });
+  const logPossession = (newDirection: Side, gameClock: string | null) => {
+    if (gameClock === null) {
+      dispatch({ type: 'SET_POSSESSION', arrow: newDirection });
+    } else {
+      const event: GameEvent = {
+        id: newId(),
+        kind: 'possessionChange',
+        quarter: activeGame.currentQuarter,
+        gameClock,
+        wallTimestamp: Date.now(),
+        newDirection
+      };
+      dispatch({ type: 'ADD_EVENT', event });
+    }
     setPossessionOpen(false);
   };
 
-  const recordQuarterScore = (a: number, b: number, gameClock: string) => {
+  const recordQuarterScore = (
+    a: number,
+    b: number,
+    gameClock: string,
+    flipArrow: boolean
+  ) => {
     dispatch({
       type: 'RECORD_QUARTER_SCORE',
       gameClock,
       teamAScore: a,
       teamBScore: b
     });
-    setQuarterScoreOpen(false);
-  };
-
-  const handleHalftimeDecision = (flip: boolean) => {
-    if (flip && activeGame.possessionArrow) {
-      const next: Side = activeGame.possessionArrow === 'A' ? 'B' : 'A';
-      dispatch({ type: 'SET_POSSESSION', arrow: next });
+    if (flipArrow && activeGame.possessionArrow) {
+      const flipped: Side = activeGame.possessionArrow === 'A' ? 'B' : 'A';
+      const event: GameEvent = {
+        id: newId(),
+        kind: 'possessionChange',
+        quarter: activeGame.currentQuarter,
+        gameClock,
+        wallTimestamp: Date.now(),
+        newDirection: flipped
+      };
+      dispatch({ type: 'ADD_EVENT', event });
     }
-    setHalftimeOpen(false);
+    setQuarterScoreOpen(false);
   };
 
   return (
@@ -282,11 +279,6 @@ export function GameScreen() {
         game={activeGame}
         onClose={() => setQuarterScoreOpen(false)}
         onCommit={recordQuarterScore}
-      />
-      <HalftimeArrowModal
-        open={halftimeOpen}
-        game={activeGame}
-        onDecision={handleHalftimeDecision}
       />
       {playersSide && (
         <PlayersModal

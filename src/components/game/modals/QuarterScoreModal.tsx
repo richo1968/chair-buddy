@@ -8,7 +8,12 @@ interface Props {
   open: boolean;
   game: Game;
   onClose: () => void;
-  onCommit: (scoreA: number, scoreB: number, gameClock: string) => void;
+  onCommit: (
+    scoreA: number,
+    scoreB: number,
+    gameClock: string,
+    flipArrow: boolean
+  ) => void;
 }
 
 export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
@@ -20,6 +25,7 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
     existing ? String(existing.teamBScore) : ''
   );
   const [clock, setClock] = useState(ZERO_CLOCK);
+  const [flipArrow, setFlipArrow] = useState(true);
 
   if (!open) return null;
 
@@ -34,6 +40,9 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
     numA >= 0 &&
     numB >= 0;
 
+  const isHalftime =
+    game.currentQuarter === 'Q2' && game.possessionArrow !== null;
+
   return (
     <Modal
       open={open}
@@ -46,7 +55,10 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={!valid} onClick={() => onCommit(numA, numB, clock)}>
+          <Button
+            disabled={!valid}
+            onClick={() => onCommit(numA, numB, clock, isHalftime && flipArrow)}
+          >
             Record &amp; advance
           </Button>
         </>
@@ -71,6 +83,26 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
           />
         </div>
       </div>
+
+      {isHalftime && (
+        <label className="mt-5 flex items-start gap-3 p-3 rounded-2xl bg-surface-hi border border-border cursor-pointer">
+          <input
+            type="checkbox"
+            checked={flipArrow}
+            onChange={e => setFlipArrow(e.target.checked)}
+            className="w-6 h-6 mt-0.5 accent-accent"
+          />
+          <div className="min-w-0">
+            <div className="font-semibold">
+              Flip possession arrow for the second half
+            </div>
+            <div className="text-xs text-muted-fg">
+              Teams change direction in Q3 — the arrow flip is logged as an
+              event at the game clock above.
+            </div>
+          </div>
+        </label>
+      )}
     </Modal>
   );
 }
