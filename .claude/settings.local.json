@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Read(//Users/jeffrichardson/.nvm/versions/**)",
+      "Read(//opt/homebrew/**)",
+      "Bash(command -v volta)",
+      "Bash(npm install *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(git -c user.email=claude@local -c user.name=claude commit -m \"scaffold: Vite + React + TS + Tailwind + PWA plugin\")"
+    ]
+  }
+}

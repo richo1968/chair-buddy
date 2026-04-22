@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 222 24% 6%;
+    --fg: 210 20% 96%;
+    --muted: 222 16% 14%;
+    --muted-fg: 215 15% 65%;
+    --surface: 222 18% 10%;
+    --surface-hi: 222 18% 14%;
+    --border: 222 14% 22%;
+    --accent: 28 96% 55%;
+    --danger: 0 76% 56%;
+    --success: 142 60% 45%;
+    --warn: 45 95% 55%;
+  }
+
+  :root.light {
+    --bg: 210 30% 98%;
+    --fg: 222 30% 10%;
+    --muted: 210 20% 92%;
+    --muted-fg: 215 16% 40%;
+    --surface: 0 0% 100%;
+    --surface-hi: 210 20% 96%;
+    --border: 215 20% 82%;
+    --accent: 24 95% 50%;
+    --danger: 0 72% 48%;
+    --success: 142 65% 35%;
+    --warn: 38 95% 48%;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
+  /* Always allow text selection in inputs */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .no-drag {
+    -webkit-user-drag: none;
+  }
+  .tap-target {
+    min-height: 60px;
+    min-width: 60px;
+  }
+}
