@@ -10,8 +10,8 @@ interface Props {
   game: Game;
   onClose: () => void;
   onCommit: (
-    scoreA: number,
-    scoreB: number,
+    quarterScoreA: number,
+    quarterScoreB: number,
     gameClock: string,
     flipArrow: boolean
   ) => void;
@@ -19,27 +19,37 @@ interface Props {
 
 export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
   const existing = game.quarterScores.find(qs => qs.quarter === game.currentQuarter);
-  const [scoreA, setScoreA] = useState(
-    existing ? String(existing.teamAScore) : ''
+
+  // Cumulative totals from all PRIOR quarters (excluding the current one).
+  const prevCumulativeA = totalScore(game, 'A') - (existing?.teamAScore ?? 0);
+  const prevCumulativeB = totalScore(game, 'B') - (existing?.teamBScore ?? 0);
+
+  // Pre-fill with the cumulative total at the end of this quarter, if we've
+  // already recorded it once.
+  const [cumulativeA, setCumulativeA] = useState(
+    existing ? String(prevCumulativeA + existing.teamAScore) : ''
   );
-  const [scoreB, setScoreB] = useState(
-    existing ? String(existing.teamBScore) : ''
+  const [cumulativeB, setCumulativeB] = useState(
+    existing ? String(prevCumulativeB + existing.teamBScore) : ''
   );
   const [clock, setClock] = useState(ZERO_CLOCK);
   const [flipArrow, setFlipArrow] = useState(true);
 
   if (!open) return null;
 
-  const numA = Number(scoreA);
-  const numB = Number(scoreB);
-  const valid =
-    isValidGameClock(clock) &&
+  const numA = Number(cumulativeA);
+  const numB = Number(cumulativeB);
+
+  const filled = cumulativeA.length > 0 && cumulativeB.length > 0;
+  const validNumbers =
     Number.isFinite(numA) &&
     Number.isFinite(numB) &&
-    scoreA.length > 0 &&
-    scoreB.length > 0 &&
-    numA >= 0 &&
-    numB >= 0;
+    numA >= prevCumulativeA &&
+    numB >= prevCumulativeB;
+  const valid = isValidGameClock(clock) && filled && validNumbers;
+
+  const quarterDeltaA = numA - prevCumulativeA;
+  const quarterDeltaB = numB - prevCumulativeB;
 
   const isHalftime =
     game.currentQuarter === 'Q2' && game.possessionArrow !== null;
@@ -47,27 +57,27 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
   const currentQ = game.currentQuarter;
   const needsTieToAdvance =
     currentQ === 'Q4' || currentQ.startsWith('OT');
-  const projectedA = totalScore(game, 'A') - (existing?.teamAScore ?? 0) + numA;
-  const projectedB = totalScore(game, 'B') - (existing?.teamBScore ?? 0) + numB;
-  const projectedTied = valid && projectedA === projectedB;
+  const projectedTied = valid && numA === numB;
   const nextQ = nextQuarter(currentQ);
 
   let subtitle: string;
-  if (!needsTieToAdvance) {
-    subtitle = `Logs the score, advances to ${nextQ}, and resets the clock to 10:00.`;
+  if (filled && !validNumbers) {
+    subtitle = `Each total must be ≥ the previous total (${prevCumulativeA}–${prevCumulativeB}).`;
+  } else if (!needsTieToAdvance) {
+    subtitle = `Enter the cumulative score from the scoreboard. Advances to ${nextQ}.`;
   } else if (!valid) {
-    subtitle = `If tied, advances to ${nextQ}. Otherwise the game ends.`;
+    subtitle = `Enter cumulative totals. If tied, advances to ${nextQ} — otherwise the game ends.`;
   } else if (projectedTied) {
-    subtitle = `Scores level at ${projectedA}–${projectedB}. Will advance to ${nextQ}.`;
+    subtitle = `Scores level at ${numA}–${numB}. Will advance to ${nextQ}.`;
   } else {
-    subtitle = `${projectedA}–${projectedB} — not level. Game will end on commit (no ${nextQ}).`;
+    subtitle = `${numA}–${numB} — not level. Game will end on commit (no ${nextQ}).`;
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Record ${currentQ} score`}
+      title={`Record end of ${currentQ} score`}
       subtitle={subtitle}
       size="lg"
       footer={
@@ -77,7 +87,14 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
           </Button>
           <Button
             disabled={!valid}
-            onClick={() => onCommit(numA, numB, clock, isHalftime && flipArrow)}
+            onClick={() =>
+              onCommit(
+                quarterDeltaA,
+                quarterDeltaB,
+                clock,
+                isHalftime && flipArrow
+              )
+            }
           >
             Record &amp; advance
           </Button>
@@ -86,20 +103,24 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
     >
       <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
         <GameClockInput value={clock} onChange={setClock} />
-        <div className="w-[280px] space-y-4">
+        <div className="w-[300px] space-y-4">
           <ScoreField
             label={game.teamA.name || 'Team A'}
             colour={game.teamA.jerseyColour}
             textColour={game.teamA.numberColour}
-            value={scoreA}
-            onChange={setScoreA}
+            value={cumulativeA}
+            onChange={setCumulativeA}
+            prevCumulative={prevCumulativeA}
+            quarterDelta={filled && validNumbers ? quarterDeltaA : null}
           />
           <ScoreField
             label={game.teamB.name || 'Team B'}
             colour={game.teamB.jerseyColour}
             textColour={game.teamB.numberColour}
-            value={scoreB}
-            onChange={setScoreB}
+            value={cumulativeB}
+            onChange={setCumulativeB}
+            prevCumulative={prevCumulativeB}
+            quarterDelta={filled && validNumbers ? quarterDeltaB : null}
           />
         </div>
       </div>
@@ -132,22 +153,36 @@ function ScoreField({
   colour,
   textColour,
   value,
-  onChange
+  onChange,
+  prevCumulative,
+  quarterDelta
 }: {
   label: string;
   colour: string;
   textColour: string;
   value: string;
   onChange: (v: string) => void;
+  prevCumulative: number;
+  quarterDelta: number | null;
 }) {
   return (
     <label className="block">
-      <span
-        className="block text-xs uppercase tracking-widest font-semibold mb-1 px-2 py-1 rounded-lg w-fit"
-        style={{ backgroundColor: colour, color: textColour }}
-      >
-        {label}
-      </span>
+      <div className="flex items-center justify-between mb-1">
+        <span
+          className="text-xs uppercase tracking-widest font-semibold px-2 py-1 rounded-lg"
+          style={{ backgroundColor: colour, color: textColour }}
+        >
+          {label}
+        </span>
+        <span className="text-[11px] text-muted-fg tabular-nums">
+          was {prevCumulative}
+          {quarterDelta !== null && (
+            <span className="ml-1 text-accent font-semibold">
+              (+{quarterDelta})
+            </span>
+          )}
+        </span>
+      </div>
       <input
         type="text"
         inputMode="numeric"

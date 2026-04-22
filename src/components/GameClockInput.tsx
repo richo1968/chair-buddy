@@ -1,4 +1,4 @@
-import { Delete, Eraser, RotateCcw } from 'lucide-react';
+import { Delete, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const DEFAULT_CLOCK = '10:00';
@@ -48,7 +48,6 @@ export function GameClockInput({
     onChange(fromBuffer(next));
   };
   const clear = () => onChange(ZERO_CLOCK);
-  const quickReset = () => onChange(DEFAULT_CLOCK);
 
   const displaySizeCls =
     size === 'lg'
@@ -87,20 +86,6 @@ export function GameClockInput({
           <Eraser className="w-6 h-6" strokeWidth={2.25} />
         </KeypadButton>
       </div>
-
-      <button
-        type="button"
-        onClick={quickReset}
-        className={cn(
-          'tap-target rounded-2xl border border-border bg-surface',
-          'flex items-center justify-center gap-2 text-lg font-semibold',
-          'active:bg-surface-hi active:brightness-110',
-          'transition-none'
-        )}
-      >
-        <RotateCcw className="w-5 h-5" strokeWidth={2.25} />
-        Reset to 10:00
-      </button>
     </div>
   );
 }
