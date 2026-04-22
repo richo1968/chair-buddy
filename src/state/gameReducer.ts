@@ -139,12 +139,21 @@ export function reducer(state: AppState, action: Action): AppState {
       );
 
     case 'DELETE_EVENT':
-      return mapActive(state, g =>
-        touch({
-          ...g,
-          events: g.events.filter(ev => ev.id !== action.eventId)
-        })
-      );
+      return mapActive(state, g => {
+        const target = g.events.find(ev => ev.id === action.eventId);
+        const events = g.events.filter(ev => ev.id !== action.eventId);
+        if (target?.kind === 'quarterScoreRecorded') {
+          return touch({
+            ...g,
+            events,
+            quarterScores: g.quarterScores.filter(
+              qs => qs.quarter !== target.quarterScored
+            ),
+            currentQuarter: target.quarterScored
+          });
+        }
+        return touch({ ...g, events });
+      });
 
     case 'SET_LAST_CLOCK':
       return mapActive(state, g => touch({ ...g, lastGameClock: action.clock }));
