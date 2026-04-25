@@ -53,14 +53,9 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
   const [protestReason, setProtestReason] = useState(
     event?.kind === 'protest' ? event.reason ?? '' : ''
   );
-  const [ftAttempted, setFtAttempted] = useState(
+  const [ftAwarded, setFtAwarded] = useState(
     event?.kind === 'foul' && event.freeThrows
-      ? String(event.freeThrows.attempted)
-      : ''
-  );
-  const [ftMade, setFtMade] = useState(
-    event?.kind === 'foul' && event.freeThrows
-      ? String(event.freeThrows.made)
+      ? String(event.freeThrows.awarded)
       : ''
   );
 
@@ -71,22 +66,13 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
   const save = () => {
     if (!valid) return;
     if (event.kind === 'foul' && foulType) {
-      const ftAtt = parseInt(ftAttempted, 10);
-      const ftMd = parseInt(ftMade, 10);
-      const ftHasInput = ftAttempted.length > 0 || ftMade.length > 0;
+      const ftNum = parseInt(ftAwarded, 10);
       const ftValid =
-        ftHasInput &&
-        Number.isFinite(ftAtt) &&
-        Number.isFinite(ftMd) &&
-        ftAtt >= 0 &&
-        ftMd >= 0 &&
-        ftMd <= ftAtt;
+        ftAwarded.length > 0 && Number.isFinite(ftNum) && ftNum > 0;
       const patch: Partial<FoulEvent> = {
         gameClock: clock,
         type: foulType,
-        freeThrows: ftValid
-          ? { attempted: ftAtt, made: ftMd }
-          : undefined
+        freeThrows: ftValid ? { awarded: ftNum } : undefined
       };
       dispatch({
         type: 'UPDATE_EVENT',
@@ -209,43 +195,23 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
               </div>
               <div className="rounded-xl border border-border bg-surface px-3 py-2 space-y-2">
                 <div className="text-xs text-muted-fg uppercase tracking-widest">
-                  Free throws (optional)
+                  Free throws awarded
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className="block text-[10px] text-muted-fg mb-0.5">
-                      Attempted
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={ftAttempted}
-                      onChange={e =>
-                        setFtAttempted(e.target.value.replace(/\D/g, ''))
-                      }
-                      placeholder="0"
-                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="block text-[10px] text-muted-fg mb-0.5">
-                      Made
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={ftMade}
-                      onChange={e =>
-                        setFtMade(e.target.value.replace(/\D/g, ''))
-                      }
-                      placeholder="0"
-                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
-                    />
-                  </label>
-                </div>
-                <div className="text-[10px] text-muted-fg leading-relaxed">
-                  Leave blank to clear FT info.
-                </div>
+                <label className="block">
+                  <span className="block text-[10px] text-muted-fg mb-0.5">
+                    Number awarded (leave blank to clear)
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={ftAwarded}
+                    onChange={e =>
+                      setFtAwarded(e.target.value.replace(/\D/g, ''))
+                    }
+                    placeholder="e.g. 2"
+                    className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
+                  />
+                </label>
               </div>
             </div>
           )}

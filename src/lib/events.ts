@@ -117,8 +117,7 @@ function describeFoul(e: FoulEvent, game: Game): string {
   }
   let result = `${prefix} — ${FOUL_TYPE_LABEL[e.type]}`;
   if (e.freeThrows) {
-    const { attempted, made } = e.freeThrows;
-    result += ` · FT ${made}/${attempted}`;
+    result += ` · ${e.freeThrows.awarded} FT`;
   }
   return result;
 }

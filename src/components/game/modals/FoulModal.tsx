@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 import type { FoulSubject, FoulType, FreeThrows, Game, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { GameClockInput, ZERO_CLOCK, isValidGameClock } from '@/components/GameClockInput';
@@ -34,36 +33,15 @@ export function FoulModal({
       : null;
 
   const [clock, setClock] = useState(ZERO_CLOCK);
-  const [ftOpen, setFtOpen] = useState(false);
-  const [ftAttempted, setFtAttempted] = useState('');
-  const [ftMade, setFtMade] = useState('');
 
   if (!open) return null;
   if (subject.kind === 'player' && !player) return null;
 
   const clockValid = isValidGameClock(clock);
-  const ftAtt = parseInt(ftAttempted, 10);
-  const ftMd = parseInt(ftMade, 10);
-  const ftHasInput = ftAttempted.length > 0 || ftMade.length > 0;
-  const ftValid =
-    !ftHasInput ||
-    (Number.isFinite(ftAtt) &&
-      Number.isFinite(ftMd) &&
-      ftAtt >= 0 &&
-      ftMd >= 0 &&
-      ftMd <= ftAtt);
 
-  const valid = clockValid && ftValid;
-
-  const computeFreeThrows = (): FreeThrows | undefined => {
-    if (!ftHasInput) return undefined;
-    if (!Number.isFinite(ftAtt) || !Number.isFinite(ftMd)) return undefined;
-    return { attempted: ftAtt, made: ftMd };
-  };
-
-  const commit = (type: FoulType, ftOverride?: FreeThrows) => {
-    if (!valid) return;
-    onCommit(type, clock, ftOverride ?? computeFreeThrows());
+  const commit = (type: FoulType, awarded?: number) => {
+    if (!clockValid) return;
+    onCommit(type, clock, awarded !== undefined ? { awarded } : undefined);
   };
 
   let chip: JSX.Element;
@@ -122,7 +100,7 @@ export function FoulModal({
           {isPlayer ? (
             <>
               <FoulTypeButton
-                disabled={!valid}
+                disabled={!clockValid}
                 label={FOUL_TYPE_LABEL.personal}
                 onClick={() => commit('personal')}
               />
@@ -131,10 +109,8 @@ export function FoulModal({
                   <button
                     key={n}
                     type="button"
-                    disabled={!valid}
-                    onClick={() =>
-                      commit('personal', { attempted: n, made: 0 })
-                    }
+                    disabled={!clockValid}
+                    onClick={() => commit('personal', n)}
                     className={cn(
                       'rounded-xl border-2 py-2 text-base font-bold font-mono tabular-nums',
                       'bg-surface border-border text-fg',
@@ -148,97 +124,28 @@ export function FoulModal({
                 ))}
               </div>
               <FoulTypeButton
-                disabled={!valid}
+                disabled={!clockValid}
                 label={FOUL_TYPE_LABEL.technical}
                 onClick={() => commit('technical')}
               />
               <FoulTypeButton
-                disabled={!valid}
+                disabled={!clockValid}
                 label={FOUL_TYPE_LABEL.unsportsmanlike}
                 onClick={() => commit('unsportsmanlike')}
               />
               <FoulTypeButton
-                disabled={!valid}
+                disabled={!clockValid}
                 label={FOUL_TYPE_LABEL.disqualifying}
                 onClick={() => commit('disqualifying')}
               />
             </>
           ) : (
             <FoulTypeButton
-              disabled={!valid}
+              disabled={!clockValid}
               label={FOUL_TYPE_LABEL.technical}
               onClick={() => commit('technical')}
             />
           )}
-
-          <div className="rounded-xl border border-border bg-surface overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setFtOpen(o => !o)}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold active:brightness-110 transition-none"
-            >
-              <span className="text-muted-fg">
-                Free throws (manual)
-                {ftHasInput && ftValid && (
-                  <span className="ml-2 text-fg">
-                    {ftMd}/{ftAtt}
-                  </span>
-                )}
-              </span>
-              <ChevronDown
-                className={cn(
-                  'w-4 h-4 transition-transform',
-                  ftOpen && 'rotate-180'
-                )}
-              />
-            </button>
-            {ftOpen && (
-              <div className="px-3 pb-3 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className="block text-[10px] text-muted-fg uppercase tracking-widest mb-0.5">
-                      Attempted
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={ftAttempted}
-                      onChange={e =>
-                        setFtAttempted(e.target.value.replace(/\D/g, ''))
-                      }
-                      placeholder="0"
-                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="block text-[10px] text-muted-fg uppercase tracking-widest mb-0.5">
-                      Made
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={ftMade}
-                      onChange={e =>
-                        setFtMade(e.target.value.replace(/\D/g, ''))
-                      }
-                      placeholder="0"
-                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
-                    />
-                  </label>
-                </div>
-                {ftHasInput && !ftValid && (
-                  <div className="text-[11px] text-danger">
-                    Made must be ≤ attempted, both ≥ 0.
-                  </div>
-                )}
-                <div className="text-[10px] text-muted-fg leading-relaxed">
-                  Use this when the FT count isn't covered by P1/P2/P3 — e.g.
-                  technical, unsportsmanlike, or recording made shots after the
-                  fact. Edit later via the event log too.
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </Modal>

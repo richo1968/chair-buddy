@@ -25,8 +25,8 @@ export function HomeScreen() {
       <div className="max-w-5xl mx-auto">
         <header className="flex items-center justify-between mb-8 gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Scoretable</h1>
-            <div className="text-sm text-muted-fg mt-1">FIBA event logger</div>
+            <h1 className="text-3xl font-bold tracking-tight">Chair Buddy</h1>
+            <div className="text-sm text-muted-fg mt-1">The chair's companion</div>
           </div>
           <div className="flex items-center gap-2">
             {cloudEnabled &&

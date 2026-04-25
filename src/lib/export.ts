@@ -31,7 +31,7 @@ export function exportGameAsText(game: Game): string {
   const totA = totalScore(game, 'A');
   const totB = totalScore(game, 'B');
 
-  lines.push(heading('SCORETABLE CHAIR — GAME REVIEW'));
+  lines.push(heading('CHAIR BUDDY — GAME REVIEW'));
   lines.push('');
   if (game.competition) lines.push(`${pad('Competition:', 14)}${game.competition}`);
   if (game.division) lines.push(`${pad('Division:', 14)}${game.division}`);

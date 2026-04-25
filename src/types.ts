@@ -26,8 +26,8 @@ export type BenchLayout = 'A-left' | 'A-right';
 export type FoulType = 'personal' | 'technical' | 'unsportsmanlike' | 'disqualifying';
 
 export interface FreeThrows {
-  attempted: number;
-  made: number;
+  /** Number of free throws awarded as a result of the foul. */
+  awarded: number;
 }
 export type WarningType = 'general' | 'time-delay' | 'flop';
 export type WarningTarget = 'teamA' | 'teamB';

@@ -29,13 +29,28 @@ function migrateEvent(e: GameEvent): GameEvent {
     const legacyFoul = e as unknown as {
       playerId?: string;
       on?: { kind: string };
+      freeThrows?: { attempted?: number; made?: number; awarded?: number };
     };
+    let migrated: GameEvent = e;
+
+    // Migrate old playerId → on shape
     if (!legacyFoul.on && legacyFoul.playerId) {
-      return {
-        ...e,
-        on: { kind: 'player', playerId: legacyFoul.playerId }
-      };
+      migrated = { ...migrated, on: { kind: 'player', playerId: legacyFoul.playerId } };
     }
+
+    // Migrate old freeThrows { attempted, made } → { awarded }
+    if (
+      legacyFoul.freeThrows &&
+      'attempted' in legacyFoul.freeThrows &&
+      !('awarded' in legacyFoul.freeThrows)
+    ) {
+      migrated = {
+        ...(migrated as unknown as Record<string, unknown>),
+        freeThrows: { awarded: legacyFoul.freeThrows.attempted ?? 0 }
+      } as unknown as GameEvent;
+    }
+
+    if (migrated !== e) return migrated;
   }
   if (e.kind === 'possessionChange') {
     const legacy = e as unknown as {
