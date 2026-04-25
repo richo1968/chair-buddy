@@ -30,6 +30,7 @@ import type {
   FoulSubject,
   FoulType,
   GameEvent,
+  PossessionReason,
   Side,
   WarningTarget,
   WarningType
@@ -115,7 +116,8 @@ export function GameScreen() {
   const logPossession = (
     newTeam: Side,
     newArrowDirection: ArrowDirection,
-    gameClock: string | null
+    gameClock: string | null,
+    reason: PossessionReason | null
   ) => {
     if (gameClock === null) {
       dispatch({
@@ -131,7 +133,8 @@ export function GameScreen() {
         gameClock,
         wallTimestamp: Date.now(),
         newTeam,
-        newArrowDirection
+        newArrowDirection,
+        ...(reason ? { reason } : {})
       };
       dispatch({ type: 'ADD_EVENT', event });
     }

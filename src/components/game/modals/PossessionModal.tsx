@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import type { ArrowDirection, Game, Side, Team } from '@/types';
+import type {
+  ArrowDirection,
+  Game,
+  PossessionReason,
+  Side,
+  Team
+} from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
@@ -8,6 +14,10 @@ import {
   ZERO_CLOCK,
   isValidGameClock
 } from '@/components/GameClockInput';
+import {
+  POSSESSION_REASON_LABEL,
+  POSSESSION_REASONS
+} from '@/lib/events';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -17,7 +27,8 @@ interface Props {
   onCommit: (
     newTeam: Side,
     newDirection: ArrowDirection,
-    gameClock: string | null
+    gameClock: string | null,
+    reason: PossessionReason | null
   ) => void;
 }
 
@@ -35,9 +46,28 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
       ? 'B'
       : 'A';
 
+  // Default reason for in-game flips. If no possession-change event exists yet
+  // for the current quarter AND it isn't Q1 (which begins with a jump ball,
+  // not a throw-in), the next change is most likely the start-of-period
+  // throw-in. Otherwise default to 'held-ball' which covers the bulk of
+  // mid-game arrow flips.
+  const defaultReason: PossessionReason = (() => {
+    const hasArrowEventThisQuarter = game.events.some(
+      e =>
+        e.kind === 'possessionChange' &&
+        e.quarter === game.currentQuarter &&
+        !e.halftimeFlip
+    );
+    if (!hasArrowEventThisQuarter && game.currentQuarter !== 'Q1') {
+      return 'quarter-start';
+    }
+    return 'held-ball';
+  })();
+
   const [direction, setDirection] = useState<ArrowDirection | null>(defaultDirection);
   const [team, setTeam] = useState<Side | null>(defaultTeam);
   const [clock, setClock] = useState(ZERO_CLOCK);
+  const [reason, setReason] = useState<PossessionReason>(defaultReason);
 
   if (!open) return null;
 
@@ -51,7 +81,7 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
 
   const submit = () => {
     if (!valid) return;
-    onCommit(team, direction, isInitial ? null : clock);
+    onCommit(team, direction, isInitial ? null : clock, isInitial ? null : reason);
   };
 
   const leftTeam = game.layout === 'A-left' ? game.teamA : game.teamB;
@@ -82,7 +112,29 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
           <GameClockInput value={clock} onChange={setClock} />
         )}
 
-        <div className={cn('space-y-5', !isInitial && 'w-[320px]')}>
+        <div className={cn('space-y-5', !isInitial && 'w-[340px]')}>
+          {!isInitial && (
+            <div>
+              <div className="text-xs text-muted-fg uppercase tracking-widest mb-2 flex items-center justify-between">
+                <span>Reason (FIBA Rule 12)</span>
+                <span className="normal-case tracking-normal text-[10px] text-accent font-semibold">
+                  smart default
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {POSSESSION_REASONS.map(r => (
+                  <ReasonOption
+                    key={r}
+                    value={r}
+                    label={POSSESSION_REASON_LABEL[r]}
+                    active={reason === r}
+                    onClick={() => setReason(r)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="text-xs text-muted-fg uppercase tracking-widest mb-2 flex items-center justify-between">
               <span>Arrow points</span>
@@ -138,6 +190,43 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+function ReasonOption({
+  value: _value,
+  label,
+  active,
+  onClick
+}: {
+  value: PossessionReason;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full rounded-xl border-2 px-3 py-2 text-left text-sm font-semibold',
+        'flex items-center gap-2',
+        'active:brightness-110 transition-none',
+        active
+          ? 'border-accent bg-accent/15 text-fg'
+          : 'border-border bg-surface text-muted-fg'
+      )}
+    >
+      <span
+        className={cn(
+          'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',
+          active ? 'border-accent bg-accent' : 'border-border'
+        )}
+      >
+        {active && <span className="w-1.5 h-1.5 rounded-full bg-bg" />}
+      </span>
+      <span className="flex-1 leading-tight">{label}</span>
+    </button>
   );
 }
 

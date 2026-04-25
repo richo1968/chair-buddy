@@ -30,10 +30,17 @@ export interface EventBase {
 
 export type ArrowDirection = 'left' | 'right';
 
+export type PossessionReason =
+  | 'quarter-start'
+  | 'held-ball'
+  | 'lodged-ball'
+  | 'officials-uncertainty';
+
 export interface PossessionChangeEvent extends EventBase {
   kind: 'possessionChange';
   newTeam: Side;
   newArrowDirection: ArrowDirection;
+  reason?: PossessionReason;
   halftimeFlip?: boolean;
 }
 

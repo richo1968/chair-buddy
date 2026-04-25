@@ -4,6 +4,7 @@ import type {
   Game,
   GameEvent,
   PossessionChangeEvent,
+  PossessionReason,
   QuarterScoreRecordedEvent,
   TimeoutEvent,
   WarningEvent,
@@ -53,6 +54,28 @@ export function warningTargetSide(t: WarningTarget): Side {
   return t === 'teamA' ? 'A' : 'B';
 }
 
+// FIBA Rule 12 — alternating possession trigger labels.
+export const POSSESSION_REASON_LABEL: Record<PossessionReason, string> = {
+  'quarter-start': 'Start-of-period throw-in',
+  'held-ball': 'Held ball',
+  'lodged-ball': 'Ball lodged in basket support',
+  'officials-uncertainty': "Officials' uncertainty (out of bounds)"
+};
+
+export const POSSESSION_REASON_SHORT: Record<PossessionReason, string> = {
+  'quarter-start': 'Period throw-in',
+  'held-ball': 'Held ball',
+  'lodged-ball': 'Lodged ball',
+  'officials-uncertainty': "Officials' call"
+};
+
+export const POSSESSION_REASONS: readonly PossessionReason[] = [
+  'quarter-start',
+  'held-ball',
+  'lodged-ball',
+  'officials-uncertainty'
+];
+
 export function describeEvent(event: GameEvent, game: Game): string {
   switch (event.kind) {
     case 'foul':
@@ -100,7 +123,11 @@ function describePossession(e: PossessionChangeEvent, game: Game): string {
   if (e.halftimeFlip) {
     return `Halftime — arrow flipped to ${e.newArrowDirection}. Possession stays with ${teamName(game, e.newTeam)}.`;
   }
-  return `Possession → ${teamName(game, e.newTeam)} (arrow ${e.newArrowDirection})`;
+  const base = `Possession → ${teamName(game, e.newTeam)} (arrow ${e.newArrowDirection})`;
+  if (e.reason) {
+    return `${base} · ${POSSESSION_REASON_SHORT[e.reason]}`;
+  }
+  return base;
 }
 
 function describeQuarterScore(e: QuarterScoreRecordedEvent): string {
