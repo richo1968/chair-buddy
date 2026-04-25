@@ -40,6 +40,7 @@ export function TeamPanel({
   const team = side === 'A' ? game.teamA : game.teamB;
   const teamFouls = teamFoulsForQuarter(game, side, game.currentQuarter);
   const inBonus = teamFouls >= 5;
+  const bonusNext = teamFouls === 4;
   const coach = coachStatus(game, side);
   const benchWarning = !coach.ejected && coach.coachTechs + coach.benchTechs >= 2;
   const timeouts = timeoutStatus(game, side);
@@ -93,16 +94,19 @@ export function TeamPanel({
         className={cn(
           'rounded-2xl border flex items-center justify-between px-3 py-1',
           inBonus
-            ? 'bg-warn/20 border-warn text-warn'
-            : 'bg-surface border-border text-fg'
+            ? 'bg-danger/20 border-danger text-danger'
+            : bonusNext
+              ? 'bg-warn/20 border-warn text-warn'
+              : 'bg-surface border-border text-fg'
         )}
       >
         <div className="text-[10px] uppercase tracking-widest opacity-80">
           {game.currentQuarter} fouls
         </div>
-        <div className="font-mono font-black text-xl">
+        <div className="font-mono font-black text-xl flex items-baseline gap-1">
           {teamFouls}
-          {inBonus && <span className="ml-1 text-[10px] font-bold">BONUS</span>}
+          {inBonus && <span className="text-[10px] font-bold">BONUS</span>}
+          {bonusNext && <span className="text-[10px] font-bold">NEXT</span>}
         </div>
       </div>
 
@@ -162,6 +166,7 @@ export function TeamPanel({
                     key={p.id}
                     player={p}
                     stats={playerFoulStats(game, p.id)}
+                    isCaptain={team.captainId === p.id}
                     jerseyColour={team.jerseyColour}
                     numberColour={team.numberColour}
                     onClick={() =>
