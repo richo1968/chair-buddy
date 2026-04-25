@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -38,6 +38,9 @@ import type {
 type FoulTarget = { side: Side; subject: FoulSubject };
 type ActiveTimeout = { team: Side; startedAt: number };
 
+const LOG_RATIO_KEY = 'scoretable-chair:logRatio';
+const clampRatio = (v: number) => Math.min(0.85, Math.max(0.1, v));
+
 export function GameScreen() {
   const { dispatch, activeGame } = useApp();
   const [theme, toggleTheme] = useTheme();
@@ -52,6 +55,21 @@ export function GameScreen() {
   const [coloursSide, setColoursSide] = useState<Side | null>(null);
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
   const [endGameConfirm, setEndGameConfirm] = useState(false);
+
+  // Persisted UI preference: ratio of the team-panel split between player
+  // grid (top) and event log (bottom). Shared across both teams so the layout
+  // stays symmetric. Range: 0.1 (tiny log) … 0.85 (tiny grid).
+  const [logRatio, setLogRatio] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0.4;
+    const raw = window.localStorage.getItem(LOG_RATIO_KEY);
+    const parsed = raw ? parseFloat(raw) : NaN;
+    return isNaN(parsed) ? 0.4 : clampRatio(parsed);
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LOG_RATIO_KEY, String(logRatio));
+    }
+  }, [logRatio]);
 
   if (!activeGame) return null;
 
@@ -184,7 +202,7 @@ export function GameScreen() {
 
   return (
     <div className="h-full w-full bg-bg text-fg flex flex-col overflow-hidden">
-      <header className="shrink-0 px-4 py-2 border-b border-border bg-surface flex items-center gap-3">
+      <header className="shrink-0 px-4 pt-safe-2 pb-2 border-b border-border bg-surface flex items-center gap-3">
         <Button
           variant="ghost"
           size="md"
@@ -252,6 +270,8 @@ export function GameScreen() {
           onOpenPlayers={() => setPlayersSide(leftSide)}
           onOpenColours={() => setColoursSide(leftSide)}
           onEventTap={setEditingEvent}
+          logRatio={logRatio}
+          onLogRatioChange={r => setLogRatio(clampRatio(r))}
         />
 
         <section className="flex flex-col gap-3 min-h-0 h-full">
@@ -313,6 +333,8 @@ export function GameScreen() {
           onOpenPlayers={() => setPlayersSide(rightSide)}
           onOpenColours={() => setColoursSide(rightSide)}
           onEventTap={setEditingEvent}
+          logRatio={logRatio}
+          onLogRatioChange={r => setLogRatio(clampRatio(r))}
         />
       </main>
 

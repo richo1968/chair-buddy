@@ -21,7 +21,7 @@ export function HomeScreen() {
   const games = [...state.games].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
-    <div className="min-h-full w-full bg-bg text-fg p-6 overflow-auto">
+    <div className="min-h-full w-full bg-bg text-fg px-6 pb-6 pt-safe-6 overflow-auto">
       <div className="max-w-5xl mx-auto">
         <header className="flex items-center justify-between mb-8 gap-3 flex-wrap">
           <div>

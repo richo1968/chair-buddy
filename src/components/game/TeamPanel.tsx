@@ -1,4 +1,5 @@
-import { Users, Palette, Timer } from 'lucide-react';
+import { useRef } from 'react';
+import { Users, Palette, Timer, GripHorizontal } from 'lucide-react';
 import type { FoulSubject, Game, GameEvent, Side } from '@/types';
 import { PlayerTile } from './PlayerTile';
 import { StaffChip } from './StaffChip';
@@ -20,6 +21,9 @@ interface Props {
   onOpenPlayers: () => void;
   onOpenColours: () => void;
   onEventTap: (event: GameEvent) => void;
+  /** 0..1 — fraction of the split area used by the event log (vs player grid). */
+  logRatio: number;
+  onLogRatioChange: (ratio: number) => void;
 }
 
 export function TeamPanel({
@@ -29,7 +33,9 @@ export function TeamPanel({
   onTimeout,
   onOpenPlayers,
   onOpenColours,
-  onEventTap
+  onEventTap,
+  logRatio,
+  onLogRatioChange
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
   const teamFouls = teamFoulsForQuarter(game, side, game.currentQuarter);
@@ -37,6 +43,32 @@ export function TeamPanel({
   const coach = coachStatus(game, side);
   const benchWarning = !coach.ejected && coach.coachTechs + coach.benchTechs >= 2;
   const timeouts = timeoutStatus(game, side);
+
+  const splitRef = useRef<HTMLDivElement>(null);
+
+  const startDrag = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const container = splitRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.height <= 0) return;
+
+    const onMove = (ev: PointerEvent) => {
+      const cursor = ev.clientY - rect.top;
+      const ratio = 1 - cursor / rect.height;
+      onLogRatioChange(Math.min(0.85, Math.max(0.1, ratio)));
+    };
+    const onEnd = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+    document.body.style.cursor = 'row-resize';
+  };
 
   return (
     <div className="flex flex-col gap-2 h-full min-w-0 overflow-hidden">
@@ -101,35 +133,57 @@ export function TeamPanel({
         />
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+      <div
+        ref={splitRef}
+        className="flex-1 min-h-0 flex flex-col overflow-hidden"
+      >
         {team.players.length === 0 ? (
-          <div className="shrink-0 rounded-2xl border border-dashed border-border flex items-center justify-center text-sm text-muted-fg p-3 text-center">
-            No players yet. Tap "Manage players" to add.
-          </div>
-        ) : (
-          <div className="shrink-0 max-h-[45%] overflow-y-auto">
-            <div className="grid grid-cols-4 gap-1.5 content-start">
-              {sortPlayers(team.players).map(p => (
-                <PlayerTile
-                  key={p.id}
-                  player={p}
-                  stats={playerFoulStats(game, p.id)}
-                  jerseyColour={team.jerseyColour}
-                  numberColour={team.numberColour}
-                  onClick={() =>
-                    onFoulSubject({ kind: 'player', playerId: p.id })
-                  }
-                />
-              ))}
+          <>
+            <div className="shrink-0 rounded-2xl border border-dashed border-border flex items-center justify-center text-sm text-muted-fg p-3 text-center mb-2">
+              No players yet. Tap "Manage players" to add.
             </div>
-          </div>
+            <TeamEventLog
+              game={game}
+              side={side}
+              onEventTap={onEventTap}
+              className="flex-1 min-h-0"
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className="overflow-y-auto"
+              style={{ flex: `${1 - logRatio} 1 0`, minHeight: 0 }}
+            >
+              <div className="grid grid-cols-4 gap-1.5 content-start">
+                {sortPlayers(team.players).map(p => (
+                  <PlayerTile
+                    key={p.id}
+                    player={p}
+                    stats={playerFoulStats(game, p.id)}
+                    jerseyColour={team.jerseyColour}
+                    numberColour={team.numberColour}
+                    onClick={() =>
+                      onFoulSubject({ kind: 'player', playerId: p.id })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+            <DragHandle onPointerDown={startDrag} />
+            <div
+              style={{ flex: `${logRatio} 1 0`, minHeight: 0 }}
+              className="min-h-0"
+            >
+              <TeamEventLog
+                game={game}
+                side={side}
+                onEventTap={onEventTap}
+                className="h-full"
+              />
+            </div>
+          </>
         )}
-        <TeamEventLog
-          game={game}
-          side={side}
-          onEventTap={onEventTap}
-          className="flex-1 min-h-0"
-        />
       </div>
 
       <button
@@ -140,6 +194,28 @@ export function TeamPanel({
         <Users className="w-4 h-4" />
         Manage players
       </button>
+    </div>
+  );
+}
+
+function DragHandle({
+  onPointerDown
+}: {
+  onPointerDown: (e: React.PointerEvent) => void;
+}) {
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize log and player grid"
+      onPointerDown={onPointerDown}
+      className={cn(
+        'shrink-0 my-1 h-3 flex items-center justify-center',
+        'cursor-row-resize touch-none rounded-md',
+        'active:bg-accent/25 hover:bg-surface-hi'
+      )}
+    >
+      <GripHorizontal className="w-6 h-3 text-muted-fg/70" strokeWidth={2.5} />
     </div>
   );
 }

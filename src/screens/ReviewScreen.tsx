@@ -42,7 +42,7 @@ export function ReviewScreen() {
   };
 
   return (
-    <div className="min-h-full w-full bg-bg text-fg p-6 overflow-auto">
+    <div className="min-h-full w-full bg-bg text-fg px-6 pb-6 pt-safe-6 overflow-auto">
       <div className="max-w-6xl mx-auto space-y-4">
         <header className="flex items-center gap-3 flex-wrap">
           <Button

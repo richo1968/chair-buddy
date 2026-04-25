@@ -67,4 +67,13 @@
     min-height: 60px;
     min-width: 60px;
   }
+  /* Safe-area aware top padding — keeps the header below the iOS status
+     bar in standalone PWA mode while still having a sensible minimum on
+     devices where safe-area is 0 (regular browsers, desktops). */
+  .pt-safe-2 {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  .pt-safe-6 {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
 }
