@@ -59,6 +59,24 @@
   }
 }
 
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 16mm 14mm;
+  }
+
+  /* Reset body constraints so the print view can flow freely */
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body {
+    overscroll-behavior: auto !important;
+  }
+}
+
 @layer utilities {
   .no-drag {
     -webkit-user-drag: none;

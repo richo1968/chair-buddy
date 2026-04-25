@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   ClipboardList,
   Download,
+  FileDown,
   Flag,
   Play,
   RotateCcw,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/game';
 import { describeEvent } from '@/lib/events';
 import { downloadTextFile, exportGameAsText } from '@/lib/export';
+import { GamePrintView } from '@/components/game/GamePrintView';
 import { cn } from '@/lib/utils';
 import type { Game, GameEvent, Side, Team } from '@/types';
 
@@ -45,7 +47,14 @@ export function ReviewScreen() {
   };
 
   return (
-    <div className="min-h-full w-full bg-bg text-fg px-6 pb-6 pt-safe-6 overflow-auto">
+    <>
+    {/* ── Print-only view — hidden on screen, shown when printing ── */}
+    <div className="hidden print:block">
+      <GamePrintView game={activeGame} />
+    </div>
+
+    {/* ── Screen view — hidden during print ── */}
+    <div className="min-h-full w-full bg-bg text-fg px-6 pb-6 pt-safe-6 overflow-auto print:hidden">
       <div className="max-w-6xl mx-auto space-y-4">
         <header className="flex items-center gap-3 flex-wrap">
           <Button
@@ -57,6 +66,10 @@ export function ReviewScreen() {
             Home
           </Button>
           <div className="flex-1" />
+          <Button variant="secondary" size="md" onClick={() => window.print()}>
+            <FileDown className="w-4 h-4" />
+            Save PDF
+          </Button>
           <Button variant="secondary" size="md" onClick={download}>
             <Download className="w-4 h-4" />
             Export .txt
@@ -177,6 +190,7 @@ export function ReviewScreen() {
         </section>
       </div>
     </div>
+    </>
   );
 }
 
