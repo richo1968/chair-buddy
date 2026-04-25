@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Mail, Loader2, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Mail, Loader2, ChevronLeft, KeyRound } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/state/AuthProvider';
@@ -9,49 +9,79 @@ interface Props {
   onClose: () => void;
 }
 
+type Step = 'email' | 'code';
+type Action = 'idle' | 'sending' | 'verifying';
+
 export function LoginModal({ open, onClose }: Props) {
-  const { signIn, cloudEnabled } = useAuth();
+  const { signIn, verifyCode, cloudEnabled, session } = useAuth();
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>(
-    'idle'
-  );
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<Step>('email');
+  const [action, setAction] = useState<Action>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  // Close automatically once the session lands in storage.
+  useEffect(() => {
+    if (session && open) onClose();
+  }, [session, open, onClose]);
 
   if (!open) return null;
 
-  const submit = async () => {
+  const sendCode = async () => {
     if (!email.trim()) return;
-    setStatus('sending');
+    setAction('sending');
     setError(null);
     const result = await signIn(email);
+    setAction('idle');
     if (result.error) {
-      setStatus('error');
       setError(result.error);
     } else {
-      setStatus('sent');
+      setStep('code');
     }
+  };
+
+  const submitCode = async () => {
+    if (code.replace(/\D/g, '').length < 6) return;
+    setAction('verifying');
+    setError(null);
+    const result = await verifyCode(email, code);
+    setAction('idle');
+    if (result.error) {
+      setError(result.error);
+    }
+    // Success will close via the effect above when the session arrives.
+  };
+
+  const back = () => {
+    setStep('email');
+    setCode('');
+    setError(null);
   };
 
   return (
     <Modal
       open
       onClose={onClose}
-      title="Sign in to sync your games"
-      subtitle="A magic link will be emailed. Click it to finish signing in."
+      title={step === 'email' ? 'Sign in to sync your games' : 'Enter the 6-digit code'}
+      subtitle={
+        step === 'email'
+          ? 'A 6-digit sign-in code will be emailed to you.'
+          : `We sent a code to ${email}. It expires in a few minutes.`
+      }
       size="md"
       footer={
-        status === 'sent' ? (
-          <Button onClick={onClose}>Close</Button>
-        ) : (
+        step === 'email' ? (
           <>
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
             <Button
-              disabled={!email.trim() || status === 'sending' || !cloudEnabled}
-              onClick={submit}
+              disabled={
+                !email.trim() || action === 'sending' || !cloudEnabled
+              }
+              onClick={sendCode}
             >
-              {status === 'sending' ? (
+              {action === 'sending' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Sending…
@@ -59,7 +89,41 @@ export function LoginModal({ open, onClose }: Props) {
               ) : (
                 <>
                   <Mail className="w-4 h-4" />
-                  Send magic link
+                  Send code
+                </>
+              )}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={back}>
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              onClick={sendCode}
+              disabled={action !== 'idle'}
+            >
+              Resend
+            </Button>
+            <Button
+              disabled={
+                code.replace(/\D/g, '').length < 6 ||
+                action === 'verifying'
+              }
+              onClick={submitCode}
+            >
+              {action === 'verifying' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying…
+                </>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4" />
+                  Verify
                 </>
               )}
             </Button>
@@ -69,21 +133,9 @@ export function LoginModal({ open, onClose }: Props) {
     >
       {!cloudEnabled ? (
         <div className="text-sm text-danger">
-          Cloud sync is not configured on this build. Check your environment
-          variables.
+          Cloud sync is not configured on this build.
         </div>
-      ) : status === 'sent' ? (
-        <div className="flex items-start gap-3 text-fg">
-          <CheckCircle2 className="w-6 h-6 text-success shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold">Check your email.</div>
-            <div className="text-sm text-muted-fg mt-1">
-              We sent a sign-in link to <strong>{email}</strong>. Click it on
-              this same device and you'll be signed in automatically.
-            </div>
-          </div>
-        </div>
-      ) : (
+      ) : step === 'email' ? (
         <div className="space-y-3">
           <label className="block">
             <span className="block text-sm text-muted-fg mb-1.5">Email</span>
@@ -91,16 +143,44 @@ export function LoginModal({ open, onClose }: Props) {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submit()}
+              onKeyDown={e => e.key === 'Enter' && sendCode()}
               placeholder="you@example.com"
               autoFocus
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg"
             />
           </label>
           <div className="text-xs text-muted-fg leading-relaxed">
-            Signing in syncs your games across devices and backs them up in the
-            cloud. You can keep using the app without signing in — local games
-            work offline and will upload the next time you do.
+            Use the 6-digit code from the email — works inside this PWA.
+            (You'll also see a magic link in the email; ignore it on iPad
+            because it opens Safari outside this app.)
+          </div>
+          {error && <div className="text-sm text-danger">{error}</div>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <label className="block">
+            <span className="block text-sm text-muted-fg mb-1.5">
+              6-digit code
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={e => e.key === 'Enter' && submitCode()}
+              placeholder="123456"
+              autoFocus
+              maxLength={6}
+              className="h-16 w-full rounded-2xl bg-surface-hi border border-border px-4 text-center text-3xl font-mono font-bold tracking-[0.4em]"
+            />
+          </label>
+          <div className="text-xs text-muted-fg">
+            Open the email titled "Confirm your sign-in" and copy the 6-digit
+            code at the top of the message.
           </div>
           {error && <div className="text-sm text-danger">{error}</div>}
         </div>

@@ -14,7 +14,10 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   cloudEnabled: boolean;
+  /** Send the user a 6-digit OTP code (and a magic link) by email. */
   signIn: (email: string) => Promise<{ error: string | null }>;
+  /** Verify the 6-digit OTP code the user typed. Establishes the session in this device's storage on success. */
+  verifyCode: (email: string, code: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -50,8 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
+        // The link still works for desktop browsers; the OTP code is the
+        // primary path for the iPad PWA, since clicking the link would open
+        // Safari outside the standalone PWA's storage container.
         emailRedirectTo: window.location.origin
       }
+    });
+    return { error: error?.message ?? null };
+  }, []);
+
+  const verifyCode = useCallback(async (email: string, code: string) => {
+    if (!supabase) return { error: 'Cloud sync is not configured.' };
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email'
     });
     return { error: error?.message ?? null };
   }, []);
@@ -67,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     cloudEnabled,
     signIn,
+    verifyCode,
     signOut
   };
 
