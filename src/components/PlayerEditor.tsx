@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, ClipboardPaste } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
 import { newId, sortPlayers } from '@/lib/game';
+import { BulkAddPlayersModal } from './BulkAddPlayersModal';
 
 interface Props {
   players: Player[];
@@ -24,6 +25,7 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNum, setEditNum] = useState('');
   const [editName, setEditName] = useState('');
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const addDup = isDuplicate(players, num);
   const canAdd = num.trim().length > 0 && !addDup;
@@ -112,6 +114,15 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
           style={{ backgroundColor: accent }}
         >
           <Plus className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setBulkOpen(true)}
+          aria-label="Bulk add players"
+          title="Paste a whole roster"
+          className="h-12 w-12 rounded-xl border border-border bg-surface-hi flex items-center justify-center active:brightness-125 transition-none"
+        >
+          <ClipboardPaste className="w-4 h-4" />
         </button>
       </div>
       {addDup && (
@@ -207,6 +218,16 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
             )
           )}
         </div>
+      )}
+
+      {bulkOpen && (
+        <BulkAddPlayersModal
+          open
+          onClose={() => setBulkOpen(false)}
+          existingPlayers={players}
+          accent={accent}
+          onAdd={newPlayers => onChange([...players, ...newPlayers])}
+        />
       )}
     </div>
   );
