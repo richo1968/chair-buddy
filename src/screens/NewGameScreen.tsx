@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Play, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, Play, ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { Button } from '@/components/ui/Button';
 import { ColourSwatchPicker } from '@/components/ColourSwatchPicker';
@@ -7,21 +7,30 @@ import { PlayerEditor } from '@/components/PlayerEditor';
 import { JerseyPreview } from '@/components/JerseyPreview';
 import { TEAM_SWATCHES, contrastText } from '@/lib/colours';
 import { blankTeam, newGame, todayISO } from '@/lib/game';
-import type { BenchLayout, Player, Team } from '@/types';
+import { cn } from '@/lib/utils';
+import type { BenchLayout, Officials, Player, Team } from '@/types';
 
 export function NewGameScreen() {
   const { dispatch } = useApp();
 
   const [date, setDate] = useState(todayISO());
   const [division, setDivision] = useState('');
+  const [competition, setCompetition] = useState('');
+  const [venue, setVenue] = useState('');
+  const [tipTime, setTipTime] = useState('');
   const [teamA, setTeamA] = useState(() => blankTeam(TEAM_SWATCHES[0]));
   const [teamB, setTeamB] = useState(() => blankTeam(TEAM_SWATCHES[6]));
   const [layout, setLayout] = useState<BenchLayout>('A-left');
+  const [officials, setOfficials] = useState<Officials>({});
+  const [officialsOpen, setOfficialsOpen] = useState(false);
 
   const canStart = teamA.name.trim() && teamB.name.trim();
 
   const start = () => {
     if (!canStart) return;
+    const cleanOfficials: Officials = Object.fromEntries(
+      Object.entries(officials).filter(([, v]) => v && v.trim())
+    );
     const game = newGame({
       date,
       division: division.trim(),
@@ -29,6 +38,10 @@ export function NewGameScreen() {
       teamB: { ...teamB, name: teamB.name.trim() },
       layout
     });
+    if (competition.trim()) game.competition = competition.trim();
+    if (venue.trim()) game.venue = venue.trim();
+    if (tipTime.trim()) game.tipTime = tipTime.trim();
+    if (Object.keys(cleanOfficials).length > 0) game.officials = cleanOfficials;
     dispatch({ type: 'CREATE_GAME', game });
   };
 
@@ -59,24 +72,57 @@ export function NewGameScreen() {
           </Button>
         </header>
 
-        <section className="grid grid-cols-2 gap-6">
-          <Field label="Date">
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg font-mono"
-            />
-          </Field>
-          <Field label="Division (optional)">
-            <input
-              type="text"
-              value={division}
-              onChange={e => setDivision(e.target.value)}
-              placeholder="e.g. Senior Men A"
-              className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg"
-            />
-          </Field>
+        <section className="rounded-3xl border border-border bg-surface p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-muted-fg uppercase tracking-widest">
+            Game details
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Date">
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base font-mono"
+              />
+            </Field>
+            <Field label="Tip-off time (optional)">
+              <input
+                type="time"
+                value={tipTime}
+                onChange={e => setTipTime(e.target.value)}
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base font-mono"
+              />
+            </Field>
+            <Field label="Venue (optional)">
+              <input
+                type="text"
+                value={venue}
+                onChange={e => setVenue(e.target.value)}
+                placeholder="e.g. Adelaide Arena Court 2"
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Competition (optional)">
+              <input
+                type="text"
+                value={competition}
+                onChange={e => setCompetition(e.target.value)}
+                placeholder="e.g. NBL1 Central"
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+              />
+            </Field>
+            <Field label="Division (optional)">
+              <input
+                type="text"
+                value={division}
+                onChange={e => setDivision(e.target.value)}
+                placeholder="e.g. Senior Men A"
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+              />
+            </Field>
+          </div>
         </section>
 
         <section className="grid grid-cols-2 gap-6">
@@ -117,6 +163,34 @@ export function NewGameScreen() {
             <BenchSlot position="Left" label={leftLabel} team={leftTeam} />
             <BenchSlot position="Right" label={rightLabel} team={rightTeam} />
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-border bg-surface overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setOfficialsOpen(o => !o)}
+            className="w-full flex items-center justify-between gap-3 px-5 py-4 active:brightness-110 transition-none"
+          >
+            <div className="text-left">
+              <div className="text-sm font-semibold text-muted-fg uppercase tracking-widest">
+                Officials (optional)
+              </div>
+              <div className="text-xs text-muted-fg mt-0.5">
+                Crew chief, umpires, table officials. Recorded on the export.
+              </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                'w-5 h-5 transition-transform shrink-0',
+                officialsOpen && 'rotate-180'
+              )}
+            />
+          </button>
+          {officialsOpen && (
+            <div className="px-5 pb-5">
+              <OfficialsForm officials={officials} onChange={setOfficials} />
+            </div>
+          )}
         </section>
 
         <div className="flex justify-end">
@@ -181,6 +255,31 @@ function TeamPanel({
           />
         </Field>
 
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Head coach (optional)">
+            <input
+              type="text"
+              value={team.coachName ?? ''}
+              onChange={e =>
+                onChange(t => ({ ...t, coachName: e.target.value }))
+              }
+              placeholder="e.g. M. Smith"
+              className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+            />
+          </Field>
+          <Field label="Assistant coach (optional)">
+            <input
+              type="text"
+              value={team.assistantCoachName ?? ''}
+              onChange={e =>
+                onChange(t => ({ ...t, assistantCoachName: e.target.value }))
+              }
+              placeholder="e.g. R. Jones"
+              className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+            />
+          </Field>
+        </div>
+
         <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
           <Field label="Jersey colour">
             <ColourSwatchPicker
@@ -220,6 +319,10 @@ function TeamPanel({
             players={team.players}
             onChange={onPlayersChange}
             accent={team.jerseyColour}
+            captainId={team.captainId}
+            onCaptainChange={id =>
+              onChange(t => ({ ...t, captainId: id ?? undefined }))
+            }
           />
         </Field>
       </div>
@@ -251,6 +354,45 @@ function BenchSlot({
         <div className="text-xs uppercase tracking-widest opacity-75">{label}</div>
         <div className="font-bold truncate">{team.name || '—'}</div>
       </div>
+    </div>
+  );
+}
+
+const OFFICIAL_FIELDS: Array<{
+  key: keyof Officials;
+  label: string;
+  hint?: string;
+}> = [
+  { key: 'crewChief', label: 'Crew chief (referee 1)' },
+  { key: 'umpire1', label: 'Umpire 1 (referee 2)' },
+  { key: 'umpire2', label: 'Umpire 2 (referee 3)' },
+  { key: 'commissioner', label: 'Commissioner' },
+  { key: 'scorer', label: 'Scorer' },
+  { key: 'assistantScorer', label: 'Assistant scorer' },
+  { key: 'timer', label: 'Timer' },
+  { key: 'shotClockOperator', label: 'Shot-clock operator' }
+];
+
+export function OfficialsForm({
+  officials,
+  onChange
+}: {
+  officials: Officials;
+  onChange: (next: Officials) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {OFFICIAL_FIELDS.map(({ key, label }) => (
+        <Field key={key} label={label}>
+          <input
+            type="text"
+            value={officials[key] ?? ''}
+            onChange={e => onChange({ ...officials, [key]: e.target.value })}
+            placeholder="Name"
+            className="h-11 w-full rounded-xl bg-surface-hi border border-border px-3 text-sm"
+          />
+        </Field>
+      ))}
     </div>
   );
 }

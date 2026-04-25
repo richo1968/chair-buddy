@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X, ClipboardPaste } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, ClipboardPaste, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
 import { newId, sortPlayers } from '@/lib/game';
@@ -10,6 +10,10 @@ interface Props {
   players: Player[];
   onChange: (players: Player[]) => void;
   accent: string;
+  /** Optional: id of the team captain. */
+  captainId?: string;
+  /** Optional: callback when captain selection changes. Pass `undefined` to clear. */
+  onCaptainChange?: (id: string | undefined) => void;
 }
 
 const isDuplicate = (players: Player[], number: string, excludeId?: string) => {
@@ -20,7 +24,13 @@ const isDuplicate = (players: Player[], number: string, excludeId?: string) => {
   );
 };
 
-export function PlayerEditor({ players, onChange, accent }: Props) {
+export function PlayerEditor({
+  players,
+  onChange,
+  accent,
+  captainId,
+  onCaptainChange
+}: Props) {
   const [num, setNum] = useState('');
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -195,10 +205,48 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
             ) : (
               <div
                 key={p.id}
-                className="flex items-center gap-2 rounded-xl bg-surface-hi border border-border pl-3 pr-1 py-1 min-h-[44px]"
+                className={cn(
+                  'flex items-center gap-2 rounded-xl bg-surface-hi border pl-3 pr-1 py-1 min-h-[44px]',
+                  captainId === p.id ? 'border-accent' : 'border-border'
+                )}
               >
+                {captainId === p.id && (
+                  <span
+                    className="text-[10px] font-bold tracking-widest text-accent"
+                    title="Captain"
+                  >
+                    C
+                  </span>
+                )}
                 <span className="font-mono font-bold">#{p.number}</span>
                 {p.name && <span className="text-muted-fg">{p.name}</span>}
+                {onCaptainChange && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onCaptainChange(captainId === p.id ? undefined : p.id)
+                    }
+                    aria-label={
+                      captainId === p.id
+                        ? `Unmark #${p.number} as captain`
+                        : `Mark #${p.number} as captain`
+                    }
+                    title={captainId === p.id ? 'Unmark captain' : 'Mark as captain'}
+                    className={cn(
+                      'h-9 w-9 rounded-lg border flex items-center justify-center transition-none active:brightness-125',
+                      captainId === p.id
+                        ? 'bg-accent text-bg border-accent'
+                        : 'bg-muted border-border'
+                    )}
+                  >
+                    <Star
+                      className={cn(
+                        'w-4 h-4',
+                        captainId === p.id && 'fill-current'
+                      )}
+                    />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => startEdit(p)}
@@ -209,7 +257,12 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(p.id)}
+                  onClick={() => {
+                    if (captainId === p.id && onCaptainChange) {
+                      onCaptainChange(undefined);
+                    }
+                    remove(p.id);
+                  }}
                   aria-label={`Remove #${p.number}`}
                   className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center active:bg-danger active:text-white transition-none"
                 >

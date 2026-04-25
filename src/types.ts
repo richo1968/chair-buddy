@@ -13,11 +13,22 @@ export interface Team {
   jerseyColour: string;
   numberColour: string;
   players: Player[];
+  /** Player ID of the team captain, if designated. */
+  captainId?: string;
+  /** Head coach name. */
+  coachName?: string;
+  /** Assistant coach name. */
+  assistantCoachName?: string;
 }
 
 export type BenchLayout = 'A-left' | 'A-right';
 
 export type FoulType = 'personal' | 'technical' | 'unsportsmanlike' | 'disqualifying';
+
+export interface FreeThrows {
+  attempted: number;
+  made: number;
+}
 export type WarningType = 'general' | 'time-delay' | 'flop';
 export type WarningTarget = 'teamA' | 'teamB';
 
@@ -54,6 +65,8 @@ export interface FoulEvent extends EventBase {
   team: Side;
   on: FoulSubject;
   type: FoulType;
+  /** Optional: free-throws awarded as a result of this foul. */
+  freeThrows?: FreeThrows;
 }
 
 export interface WarningEvent extends EventBase {
@@ -70,6 +83,12 @@ export interface QuarterScoreRecordedEvent extends EventBase {
   teamBScore: number;
 }
 
+export interface ProtestEvent extends EventBase {
+  kind: 'protest';
+  team: Side;
+  reason: string;
+}
+
 export interface TimeoutEvent extends EventBase {
   kind: 'timeout';
   team: Side;
@@ -81,7 +100,8 @@ export type GameEvent =
   | FoulEvent
   | WarningEvent
   | QuarterScoreRecordedEvent
-  | TimeoutEvent;
+  | TimeoutEvent
+  | ProtestEvent;
 
 export interface QuarterScore {
   quarter: Quarter;
@@ -89,16 +109,44 @@ export interface QuarterScore {
   teamBScore: number;
 }
 
+export interface Officials {
+  crewChief?: string;
+  umpire1?: string;
+  umpire2?: string;
+  scorer?: string;
+  assistantScorer?: string;
+  timer?: string;
+  shotClockOperator?: string;
+  commissioner?: string;
+}
+
+export type GameOutcome =
+  | { kind: 'live' }
+  | { kind: 'final' }
+  | { kind: 'forfeit'; winner: Side }
+  | { kind: 'default'; winner: Side };
+
 export interface Game {
   id: string;
   date: string;
   division: string;
+  /** Optional competition / league name (separate from division within it). */
+  competition?: string;
+  /** Optional venue name. */
+  venue?: string;
+  /** Optional scheduled tip-off time, "HH:MM" 24-hour. */
+  tipTime?: string;
+  /** Optional table officials. */
+  officials?: Officials;
   teamA: Team;
   teamB: Team;
   currentQuarter: Quarter;
   possessionArrow: Side | null;
   arrowDirection: ArrowDirection | null;
   layout: BenchLayout;
+  /** Game outcome status — live, final, forfeit (with winner), default (with winner). */
+  outcome: GameOutcome;
+  /** @deprecated kept for backward compat with older saves; derive from outcome.kind !== 'live'. */
   finished: boolean;
   lastGameClock: string;
   events: GameEvent[];

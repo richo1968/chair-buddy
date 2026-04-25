@@ -20,6 +20,10 @@ export function TeamColoursModal({ open, game, side, onClose }: Props) {
   const [name, setName] = useState(team.name);
   const [jersey, setJersey] = useState(team.jerseyColour);
   const [number, setNumber] = useState(team.numberColour);
+  const [coachName, setCoachName] = useState(team.coachName ?? '');
+  const [assistantCoachName, setAssistantCoachName] = useState(
+    team.assistantCoachName ?? ''
+  );
 
   if (!open) return null;
 
@@ -30,7 +34,9 @@ export function TeamColoursModal({ open, game, side, onClose }: Props) {
       patch: {
         name: name.trim(),
         jerseyColour: jersey,
-        numberColour: number
+        numberColour: number,
+        coachName: coachName.trim() || undefined,
+        assistantCoachName: assistantCoachName.trim() || undefined
       }
     });
     onClose();
@@ -40,7 +46,8 @@ export function TeamColoursModal({ open, game, side, onClose }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={`Team ${side} — name and colours`}
+      title={`Team ${side} — details`}
+      subtitle="Name, colours, and coaching staff."
       size="lg"
       footer={
         <>
@@ -62,6 +69,32 @@ export function TeamColoursModal({ open, game, side, onClose }: Props) {
               className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg"
             />
           </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="block text-sm text-muted-fg mb-1.5">
+                Head coach
+              </span>
+              <input
+                type="text"
+                value={coachName}
+                onChange={e => setCoachName(e.target.value)}
+                placeholder="e.g. M. Smith"
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-sm text-muted-fg mb-1.5">
+                Assistant coach
+              </span>
+              <input
+                type="text"
+                value={assistantCoachName}
+                onChange={e => setAssistantCoachName(e.target.value)}
+                placeholder="e.g. R. Jones"
+                className="h-12 w-full rounded-xl bg-surface-hi border border-border px-3 text-base"
+              />
+            </label>
+          </div>
           <label className="block">
             <span className="block text-sm text-muted-fg mb-1.5">Jersey colour</span>
             <ColourSwatchPicker value={jersey} onChange={setJersey} />

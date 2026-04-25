@@ -7,6 +7,7 @@ interface Props {
   stats: PlayerFoulStats;
   jerseyColour: string;
   numberColour: string;
+  isCaptain?: boolean;
   onClick: () => void;
 }
 
@@ -25,6 +26,7 @@ export function PlayerTile({
   stats,
   jerseyColour,
   numberColour,
+  isCaptain,
   onClick
 }: Props) {
   const redBorder = stats.ejected || stats.fourFoulWarning;
@@ -53,6 +55,15 @@ export function PlayerTile({
       )}
       style={{ backgroundColor: jerseyColour, color: numberColour }}
     >
+      {isCaptain && (
+        <span
+          className="absolute top-1 left-1 w-[22px] h-[22px] rounded-full bg-accent text-bg flex items-center justify-center text-[11px] font-black ring-1 ring-black/30"
+          aria-label="Captain"
+          title="Captain"
+        >
+          C
+        </span>
+      )}
       {hasFouls && (
         <span
           className={cn(

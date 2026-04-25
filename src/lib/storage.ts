@@ -56,12 +56,20 @@ function migrateEvent(e: GameEvent): GameEvent {
 
 function migrateGame(g: LegacyGame): Game {
   const base = g as Game;
+  const finished = g.finished ?? false;
+  // Bring legacy `finished: boolean` forward as `outcome` if missing.
+  const outcome: Game['outcome'] = base.outcome
+    ? base.outcome
+    : finished
+      ? { kind: 'final' }
+      : { kind: 'live' };
   return {
     ...base,
     teamA: migrateTeam(g.teamA),
     teamB: migrateTeam(g.teamB),
     layout: g.layout ?? 'A-left',
-    finished: g.finished ?? false,
+    finished: outcome.kind !== 'live',
+    outcome,
     arrowDirection: base.arrowDirection ?? null,
     events: (base.events ?? []).map(migrateEvent)
   };

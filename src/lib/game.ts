@@ -44,6 +44,7 @@ export function newGame(opts: {
     possessionArrow: null,
     arrowDirection: null,
     layout: opts.layout ?? 'A-left',
+    outcome: { kind: 'live' },
     finished: false,
     lastGameClock: DEFAULT_CLOCK,
     events: [],
@@ -51,6 +52,23 @@ export function newGame(opts: {
     createdAt: now,
     updatedAt: now
   };
+}
+
+export function isGameFinished(game: Game): boolean {
+  return game.outcome.kind !== 'live';
+}
+
+export function gameOutcomeLabel(game: Game): string {
+  switch (game.outcome.kind) {
+    case 'live':
+      return 'Live';
+    case 'final':
+      return 'Final';
+    case 'forfeit':
+      return 'Forfeit';
+    case 'default':
+      return 'Default';
+  }
 }
 
 const QUARTER_ORDER: Record<string, number> = {
@@ -117,6 +135,8 @@ export function eventBelongsToTeam(event: GameEvent, side: Side): boolean {
     case 'possessionChange':
       return event.newTeam === side;
     case 'timeout':
+      return event.team === side;
+    case 'protest':
       return event.team === side;
     case 'quarterScoreRecorded':
       return true;

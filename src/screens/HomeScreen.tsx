@@ -7,7 +7,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LoginModal } from '@/components/auth/LoginModal';
-import { totalScore } from '@/lib/game';
+import { gameOutcomeLabel, isGameFinished, totalScore } from '@/lib/game';
 import type { Game } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -103,7 +103,7 @@ export function HomeScreen() {
                   game={g}
                   onOpen={() =>
                     dispatch(
-                      g.finished
+                      isGameFinished(g)
                         ? { type: 'OPEN_REVIEW', id: g.id }
                         : { type: 'OPEN_GAME', id: g.id }
                     )
@@ -185,12 +185,14 @@ function GameRow({
             <span
               className={cn(
                 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border',
-                game.finished
-                  ? 'bg-muted text-muted-fg border-border'
+                isGameFinished(game)
+                  ? game.outcome.kind === 'forfeit' || game.outcome.kind === 'default'
+                    ? 'bg-danger/15 text-danger border-danger/50'
+                    : 'bg-muted text-muted-fg border-border'
                   : 'bg-warn/15 text-warn border-warn/50'
               )}
             >
-              {game.finished ? 'Final' : 'Live'}
+              {gameOutcomeLabel(game)}
             </span>
           </div>
           <div className="text-lg font-semibold truncate">

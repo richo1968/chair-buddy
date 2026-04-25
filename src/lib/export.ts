@@ -1,6 +1,7 @@
-import type { Game, Side } from '@/types';
+import type { Game, Officials, Side } from '@/types';
 import {
   coachStatus,
+  gameOutcomeLabel,
   playerFoulStats,
   quarterOrder,
   sortEvents,
@@ -32,15 +33,72 @@ export function exportGameAsText(game: Game): string {
 
   lines.push(heading('SCORETABLE CHAIR — GAME REVIEW'));
   lines.push('');
-  lines.push(`Date:      ${game.date}`);
-  if (game.division) lines.push(`Division:  ${game.division}`);
-  lines.push(`Status:    ${game.finished ? 'Final' : 'In progress'}`);
+  if (game.competition) lines.push(`${pad('Competition:', 14)}${game.competition}`);
+  if (game.division) lines.push(`${pad('Division:', 14)}${game.division}`);
+  lines.push(`${pad('Date:', 14)}${game.date}`);
+  if (game.tipTime) lines.push(`${pad('Tip-off:', 14)}${game.tipTime}`);
+  if (game.venue) lines.push(`${pad('Venue:', 14)}${game.venue}`);
+  let statusLine = gameOutcomeLabel(game);
+  if (
+    game.outcome.kind === 'forfeit' ||
+    game.outcome.kind === 'default'
+  ) {
+    const winner =
+      game.outcome.winner === 'A' ? nameA : nameB;
+    statusLine += ` — winner: ${winner}`;
+  }
+  lines.push(`${pad('Status:', 14)}${statusLine}`);
   lines.push('');
-  lines.push(`${pad('Team A:', 10)}${nameA}`);
-  lines.push(`${pad('Team B:', 10)}${nameB}`);
-  lines.push(`${pad('Final:', 10)}${totA} - ${totB}`);
+  lines.push(`${pad('Team A:', 14)}${nameA}`);
+  if (game.teamA.coachName)
+    lines.push(`${pad('  Coach:', 14)}${game.teamA.coachName}`);
+  if (game.teamA.assistantCoachName)
+    lines.push(`${pad('  Asst coach:', 14)}${game.teamA.assistantCoachName}`);
+  if (game.teamA.captainId) {
+    const cap = game.teamA.players.find(p => p.id === game.teamA.captainId);
+    if (cap)
+      lines.push(
+        `${pad('  Captain:', 14)}#${cap.number}${cap.name ? ' ' + cap.name : ''}`
+      );
+  }
+  lines.push(`${pad('Team B:', 14)}${nameB}`);
+  if (game.teamB.coachName)
+    lines.push(`${pad('  Coach:', 14)}${game.teamB.coachName}`);
+  if (game.teamB.assistantCoachName)
+    lines.push(`${pad('  Asst coach:', 14)}${game.teamB.assistantCoachName}`);
+  if (game.teamB.captainId) {
+    const cap = game.teamB.players.find(p => p.id === game.teamB.captainId);
+    if (cap)
+      lines.push(
+        `${pad('  Captain:', 14)}#${cap.number}${cap.name ? ' ' + cap.name : ''}`
+      );
+  }
+  lines.push(`${pad('Final score:', 14)}${totA} - ${totB}`);
   lines.push('');
-  lines.push('');
+
+  if (game.officials && Object.values(game.officials).some(v => v && v.trim())) {
+    lines.push(heading('OFFICIALS'));
+    lines.push('');
+    const o = game.officials;
+    const rows: Array<[string, keyof Officials]> = [
+      ['Crew chief', 'crewChief'],
+      ['Umpire 1', 'umpire1'],
+      ['Umpire 2', 'umpire2'],
+      ['Commissioner', 'commissioner'],
+      ['Scorer', 'scorer'],
+      ['Asst scorer', 'assistantScorer'],
+      ['Timer', 'timer'],
+      ['Shot-clock op.', 'shotClockOperator']
+    ];
+    for (const [label, key] of rows) {
+      const v = o[key];
+      if (v && v.trim()) {
+        lines.push(`  ${pad(label + ':', 18)}${v}`);
+      }
+    }
+    lines.push('');
+    lines.push('');
+  }
 
   lines.push(heading('QUARTER SCORES'));
   lines.push('');
@@ -115,7 +173,8 @@ export function exportGameAsText(game: Game): string {
   }> = [
     { title: 'WARNINGS', filter: 'warning' },
     { title: 'TIMEOUTS', filter: 'timeout' },
-    { title: 'POSSESSION CHANGES', filter: 'possessionChange' }
+    { title: 'POSSESSION CHANGES', filter: 'possessionChange' },
+    { title: 'PROTESTS', filter: 'protest' }
   ];
 
   for (const { title, filter } of logKinds) {

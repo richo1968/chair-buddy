@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
+  AlertOctagon,
   ArrowLeft,
   ArrowLeftRight,
   BookOpenCheck,
   Flag,
   Moon,
-  Sun
+  Settings,
+  Sun,
+  UserSquare
 } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/Button';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { TeamPanel } from '@/components/game/TeamPanel';
 import { PossessionArrow } from '@/components/game/PossessionArrow';
 import { QuarterScoresTable } from '@/components/game/QuarterScoresTable';
@@ -24,12 +26,18 @@ import { TimeoutModal } from '@/components/game/modals/TimeoutModal';
 import { PlayersModal } from '@/components/game/modals/PlayersModal';
 import { TeamColoursModal } from '@/components/game/modals/TeamColoursModal';
 import { EditEventModal } from '@/components/game/modals/EditEventModal';
+import { EndGameModal } from '@/components/game/modals/EndGameModal';
+import { OfficialsModal } from '@/components/game/modals/OfficialsModal';
+import { GameDetailsModal } from '@/components/game/modals/GameDetailsModal';
+import { ProtestModal } from '@/components/game/modals/ProtestModal';
 import { newId } from '@/lib/game';
 import type {
   ArrowDirection,
   FoulSubject,
   FoulType,
+  FreeThrows,
   GameEvent,
+  GameOutcome,
   PossessionReason,
   Side,
   WarningTarget,
@@ -55,7 +63,10 @@ export function GameScreen() {
   const [playersSide, setPlayersSide] = useState<Side | null>(null);
   const [coloursSide, setColoursSide] = useState<Side | null>(null);
   const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
-  const [endGameConfirm, setEndGameConfirm] = useState(false);
+  const [endGameOpen, setEndGameOpen] = useState(false);
+  const [officialsOpen, setOfficialsOpen] = useState(false);
+  const [gameDetailsOpen, setGameDetailsOpen] = useState(false);
+  const [protestOpen, setProtestOpen] = useState(false);
 
   // Persisted UI preference: ratio of the team-panel split between player
   // grid (top) and event log (bottom). Shared across both teams so the layout
@@ -77,7 +88,11 @@ export function GameScreen() {
   const leftSide: Side = activeGame.layout === 'A-left' ? 'A' : 'B';
   const rightSide: Side = leftSide === 'A' ? 'B' : 'A';
 
-  const logFoul = (type: FoulType, gameClock: string) => {
+  const logFoul = (
+    type: FoulType,
+    gameClock: string,
+    freeThrows: FreeThrows | undefined
+  ) => {
     if (!foulTarget) return;
     const event: GameEvent = {
       id: newId(),
@@ -87,10 +102,31 @@ export function GameScreen() {
       wallTimestamp: Date.now(),
       team: foulTarget.side,
       on: foulTarget.subject,
-      type
+      type,
+      ...(freeThrows ? { freeThrows } : {})
     };
     dispatch({ type: 'ADD_EVENT', event });
     setFoulTarget(null);
+  };
+
+  const logProtest = (team: Side, reason: string, gameClock: string) => {
+    const event: GameEvent = {
+      id: newId(),
+      kind: 'protest',
+      quarter: activeGame.currentQuarter,
+      gameClock,
+      wallTimestamp: Date.now(),
+      team,
+      reason
+    };
+    dispatch({ type: 'ADD_EVENT', event });
+    setProtestOpen(false);
+  };
+
+  const handleEndGame = (outcome: GameOutcome) => {
+    setEndGameOpen(false);
+    dispatch({ type: 'FINISH_GAME', outcome });
+    dispatch({ type: 'OPEN_REVIEW', id: activeGame.id });
   };
 
   const logWarning = (
@@ -232,9 +268,37 @@ export function GameScreen() {
           variant="secondary"
           size="md"
           onClick={() => dispatch({ type: 'SWAP_BENCHES' })}
+          aria-label="Swap benches"
+          title="Swap benches"
         >
           <ArrowLeftRight className="w-4 h-4" />
-          Swap
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={() => setGameDetailsOpen(true)}
+          aria-label="Game details"
+          title="Edit date / venue / competition"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={() => setOfficialsOpen(true)}
+          aria-label="Officials"
+          title="Edit table officials"
+        >
+          <UserSquare className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={() => setProtestOpen(true)}
+          aria-label="Log protest"
+          title="Log a team protest"
+        >
+          <AlertOctagon className="w-4 h-4 text-danger" />
         </Button>
         <Button
           variant="secondary"
@@ -255,7 +319,7 @@ export function GameScreen() {
         <Button
           variant="danger"
           size="md"
-          onClick={() => setEndGameConfirm(true)}
+          onClick={() => setEndGameOpen(true)}
         >
           <Flag className="w-4 h-4" />
           End Game
@@ -410,19 +474,36 @@ export function GameScreen() {
           onClose={() => setEditingEvent(null)}
         />
       )}
-      <ConfirmDialog
-        open={endGameConfirm}
-        title="End this game?"
-        message="The game will be marked Final and open in read-only review mode. You can reopen it later if needed."
-        confirmLabel="End game"
-        danger
-        onCancel={() => setEndGameConfirm(false)}
-        onConfirm={() => {
-          setEndGameConfirm(false);
-          dispatch({ type: 'FINISH_GAME' });
-          dispatch({ type: 'OPEN_REVIEW', id: activeGame.id });
-        }}
-      />
+      {endGameOpen && (
+        <EndGameModal
+          open
+          game={activeGame}
+          onClose={() => setEndGameOpen(false)}
+          onConfirm={handleEndGame}
+        />
+      )}
+      {officialsOpen && (
+        <OfficialsModal
+          open
+          game={activeGame}
+          onClose={() => setOfficialsOpen(false)}
+        />
+      )}
+      {gameDetailsOpen && (
+        <GameDetailsModal
+          open
+          game={activeGame}
+          onClose={() => setGameDetailsOpen(false)}
+        />
+      )}
+      {protestOpen && (
+        <ProtestModal
+          open
+          game={activeGame}
+          onClose={() => setProtestOpen(false)}
+          onCommit={logProtest}
+        />
+      )}
     </div>
   );
 }

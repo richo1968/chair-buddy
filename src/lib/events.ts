@@ -5,6 +5,7 @@ import type {
   GameEvent,
   PossessionChangeEvent,
   PossessionReason,
+  ProtestEvent,
   QuarterScoreRecordedEvent,
   TimeoutEvent,
   WarningEvent,
@@ -88,6 +89,8 @@ export function describeEvent(event: GameEvent, game: Game): string {
       return describeQuarterScore(event as QuarterScoreRecordedEvent);
     case 'timeout':
       return describeTimeout(event as TimeoutEvent, game);
+    case 'protest':
+      return describeProtest(event as ProtestEvent, game);
   }
 }
 
@@ -100,17 +103,24 @@ function describeFoul(e: FoulEvent, game: Game): string {
   const team = e.team === 'A' ? game.teamA : game.teamB;
   const base = teamName(game, e.team);
   const on = e.on;
+  let prefix: string;
   if (on.kind === 'coach') {
-    return `${base} coach — ${FOUL_TYPE_LABEL[e.type]}`;
+    prefix = `${base} coach`;
+  } else if (on.kind === 'bench') {
+    prefix = `${base} bench`;
+  } else {
+    const player = team.players.find(p => p.id === on.playerId);
+    const tag = player
+      ? `#${player.number}${player.name ? ' ' + player.name : ''}`
+      : '(removed player)';
+    prefix = `${base} ${tag}`;
   }
-  if (on.kind === 'bench') {
-    return `${base} bench — ${FOUL_TYPE_LABEL[e.type]}`;
+  let result = `${prefix} — ${FOUL_TYPE_LABEL[e.type]}`;
+  if (e.freeThrows) {
+    const { attempted, made } = e.freeThrows;
+    result += ` · FT ${made}/${attempted}`;
   }
-  const player = team.players.find(p => p.id === on.playerId);
-  const tag = player
-    ? `#${player.number}${player.name ? ' ' + player.name : ''}`
-    : '(removed player)';
-  return `${base} ${tag} — ${FOUL_TYPE_LABEL[e.type]}`;
+  return result;
 }
 
 function describeWarning(e: WarningEvent, game: Game): string {
@@ -139,6 +149,10 @@ function describeTimeout(e: TimeoutEvent, game: Game): string {
   return `${teamName(game, e.team)} — ${label}`;
 }
 
+function describeProtest(e: ProtestEvent, game: Game): string {
+  return `${teamName(game, e.team)} — Protest${e.reason ? ': ' + e.reason : ''}`;
+}
+
 export function eventSideTint(event: GameEvent, game: Game): string | null {
   if (event.kind === 'foul') {
     return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
@@ -151,6 +165,9 @@ export function eventSideTint(event: GameEvent, game: Game): string | null {
     return side === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   if (event.kind === 'timeout') {
+    return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
+  }
+  if (event.kind === 'protest') {
     return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   return null;

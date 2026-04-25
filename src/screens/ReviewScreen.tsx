@@ -1,4 +1,5 @@
 import {
+  AlertOctagon,
   AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
@@ -14,6 +15,8 @@ import { useApp } from '@/state/AppProvider';
 import { Button } from '@/components/ui/Button';
 import {
   coachStatus,
+  gameOutcomeLabel,
+  isGameFinished,
   playerFoulStats,
   quarterOrder,
   sortEvents,
@@ -58,7 +61,7 @@ export function ReviewScreen() {
             <Download className="w-4 h-4" />
             Export .txt
           </Button>
-          {activeGame.finished ? (
+          {isGameFinished(activeGame) ? (
             <Button
               variant="secondary"
               size="md"
@@ -86,7 +89,17 @@ export function ReviewScreen() {
 
         <section className="rounded-3xl border border-border bg-surface p-5">
           <div className="text-xs text-muted-fg uppercase tracking-widest mb-3">
-            {activeGame.finished ? 'Final' : 'Live — viewing only'}
+            {isGameFinished(activeGame)
+              ? gameOutcomeLabel(activeGame) +
+                (activeGame.outcome.kind === 'forfeit' ||
+                activeGame.outcome.kind === 'default'
+                  ? ` — winner: ${
+                      activeGame.outcome.winner === 'A'
+                        ? activeGame.teamA.name || 'Team A'
+                        : activeGame.teamB.name || 'Team B'
+                    }`
+                  : '')
+              : 'Live — viewing only'}
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
             <TeamBadge team={activeGame.teamA} side="A" />
@@ -102,7 +115,10 @@ export function ReviewScreen() {
           </div>
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-fg">
             <span>{activeGame.date}</span>
+            {activeGame.tipTime && <span>· {activeGame.tipTime}</span>}
+            {activeGame.competition && <span>· {activeGame.competition}</span>}
             {activeGame.division && <span>· {activeGame.division}</span>}
+            {activeGame.venue && <span>· {activeGame.venue}</span>}
             <span>
               · {activeGame.teamA.players.length} vs{' '}
               {activeGame.teamB.players.length} players
@@ -110,6 +126,30 @@ export function ReviewScreen() {
             <span>· {events.length} events</span>
           </div>
         </section>
+
+        {(activeGame.teamA.coachName ||
+          activeGame.teamA.captainId ||
+          activeGame.teamB.coachName ||
+          activeGame.teamB.captainId ||
+          (activeGame.officials &&
+            Object.values(activeGame.officials).some(v => v && v.trim()))) && (
+          <section className="rounded-3xl border border-border bg-surface p-5">
+            <SectionTitle>Game personnel</SectionTitle>
+            <div className="grid grid-cols-2 gap-4">
+              <PersonnelBlock game={activeGame} side="A" />
+              <PersonnelBlock game={activeGame} side="B" />
+            </div>
+            {activeGame.officials &&
+              Object.values(activeGame.officials).some(v => v && v.trim()) && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="text-xs text-muted-fg uppercase tracking-widest mb-2">
+                    Officials
+                  </div>
+                  <OfficialsBlock officials={activeGame.officials} />
+                </div>
+              )}
+          </section>
+        )}
 
         <section className="rounded-3xl border border-border bg-surface p-5">
           <SectionTitle>Quarter scores</SectionTitle>
@@ -173,6 +213,94 @@ function TeamBadge({
           {team.name || `Team ${side}`}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PersonnelBlock({ game, side }: { game: Game; side: Side }) {
+  const team = side === 'A' ? game.teamA : game.teamB;
+  const captain = team.captainId
+    ? team.players.find(p => p.id === team.captainId)
+    : null;
+  return (
+    <div className="rounded-2xl border border-border bg-surface-hi p-3 space-y-1.5">
+      <div
+        className="inline-block text-xs font-bold uppercase tracking-widest px-2 py-1 rounded-md"
+        style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
+      >
+        {team.name || `Team ${side}`}
+      </div>
+      <PersonRow
+        label="Head coach"
+        value={team.coachName ?? <span className="italic text-muted-fg">—</span>}
+      />
+      <PersonRow
+        label="Asst coach"
+        value={
+          team.assistantCoachName ?? (
+            <span className="italic text-muted-fg">—</span>
+          )
+        }
+      />
+      <PersonRow
+        label="Captain"
+        value={
+          captain ? (
+            <>
+              <span className="font-mono font-bold">#{captain.number}</span>
+              {captain.name && ` ${captain.name}`}
+            </>
+          ) : (
+            <span className="italic text-muted-fg">—</span>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+function PersonRow({
+  label,
+  value
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline gap-2 text-sm">
+      <span className="text-xs text-muted-fg w-24 shrink-0">{label}</span>
+      <span className="flex-1 truncate">{value}</span>
+    </div>
+  );
+}
+
+function OfficialsBlock({
+  officials
+}: {
+  officials: NonNullable<Game['officials']>;
+}) {
+  const rows: Array<[string, keyof typeof officials]> = [
+    ['Crew chief', 'crewChief'],
+    ['Umpire 1', 'umpire1'],
+    ['Umpire 2', 'umpire2'],
+    ['Commissioner', 'commissioner'],
+    ['Scorer', 'scorer'],
+    ['Asst scorer', 'assistantScorer'],
+    ['Timer', 'timer'],
+    ['Shot-clock op.', 'shotClockOperator']
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+      {rows.map(([label, key]) => {
+        const v = officials[key];
+        if (!v || !v.trim()) return null;
+        return (
+          <div key={key} className="flex items-baseline gap-2">
+            <span className="text-xs text-muted-fg w-28 shrink-0">{label}</span>
+            <span className="flex-1 truncate">{v}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -319,6 +447,8 @@ function iconFor(ev: GameEvent): { Icon: LucideIcon; tint: string } {
       return { Icon: ClipboardList, tint: 'text-accent' };
     case 'timeout':
       return { Icon: Timer, tint: 'text-fg' };
+    case 'protest':
+      return { Icon: AlertOctagon, tint: 'text-danger' };
   }
 }
 

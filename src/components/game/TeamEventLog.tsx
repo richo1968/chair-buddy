@@ -1,4 +1,5 @@
 import {
+  AlertOctagon,
   AlertTriangle,
   ArrowLeftRight,
   ClipboardList,
@@ -30,6 +31,8 @@ function iconFor(ev: GameEvent): { Icon: LucideIcon; classes: string } {
       return { Icon: ClipboardList, classes: 'text-accent' };
     case 'timeout':
       return { Icon: Timer, classes: 'text-fg' };
+    case 'protest':
+      return { Icon: AlertOctagon, classes: 'text-danger' };
   }
 }
 

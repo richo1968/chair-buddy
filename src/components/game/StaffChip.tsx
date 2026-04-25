@@ -5,6 +5,8 @@ interface Props {
   techs: number;
   ejected?: boolean;
   warning?: boolean;
+  /** Optional name shown under the label (typically the head coach name on the COACH chip). */
+  subLabel?: string;
   jerseyColour: string;
   numberColour: string;
   onClick: () => void;
@@ -15,6 +17,7 @@ export function StaffChip({
   techs,
   ejected = false,
   warning = false,
+  subLabel,
   jerseyColour,
   numberColour,
   onClick
@@ -37,6 +40,14 @@ export function StaffChip({
       <div className="text-[10px] uppercase tracking-widest font-semibold opacity-75">
         {label}
       </div>
+      {subLabel && (
+        <div
+          className="text-[10px] truncate max-w-full opacity-90 -mt-0.5"
+          title={subLabel}
+        >
+          {subLabel}
+        </div>
+      )}
       <div className="flex items-baseline gap-2">
         <span className="font-mono font-black text-xl leading-none">
           {techs}T

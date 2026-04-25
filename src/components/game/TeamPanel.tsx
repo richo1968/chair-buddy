@@ -111,6 +111,7 @@ export function TeamPanel({
           label="COACH"
           techs={coach.coachTechs}
           ejected={coach.ejected}
+          subLabel={team.coachName}
           jerseyColour={team.jerseyColour}
           numberColour={team.numberColour}
           onClick={() => onFoulSubject({ kind: 'coach' })}

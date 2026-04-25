@@ -27,6 +27,10 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
       <PlayerEditor
         players={team.players}
         accent={team.jerseyColour}
+        captainId={team.captainId}
+        onCaptainChange={id =>
+          dispatch({ type: 'SET_CAPTAIN', side, playerId: id })
+        }
         onChange={next => {
           const prev = team.players;
           const prevIds = new Set(prev.map(p => p.id));

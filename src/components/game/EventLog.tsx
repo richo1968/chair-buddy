@@ -1,4 +1,5 @@
 import {
+  AlertOctagon,
   AlertTriangle,
   ArrowLeftRight,
   ClipboardList,
@@ -45,6 +46,11 @@ function eventIcon(ev: GameEvent): {
       return {
         Icon: Timer,
         classes: 'text-fg bg-muted'
+      };
+    case 'protest':
+      return {
+        Icon: AlertOctagon,
+        classes: 'text-danger bg-danger/15'
       };
   }
 }

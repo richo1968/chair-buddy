@@ -4,6 +4,7 @@ import type {
   BenchLayout,
   Game,
   GameEvent,
+  GameOutcome,
   Player,
   Quarter,
   Side,
@@ -36,8 +37,15 @@ export type Action =
     }
   | { type: 'SET_LAYOUT'; layout: BenchLayout }
   | { type: 'SWAP_BENCHES' }
-  | { type: 'FINISH_GAME' }
+  | { type: 'FINISH_GAME'; outcome: GameOutcome }
   | { type: 'REOPEN_GAME'; id: string }
+  | { type: 'SET_CAPTAIN'; side: Side; playerId: string | undefined }
+  | {
+      type: 'UPDATE_GAME_DETAILS';
+      patch: Partial<
+        Pick<Game, 'date' | 'division' | 'competition' | 'venue' | 'tipTime' | 'officials'>
+      >;
+    }
   | { type: 'ADVANCE_QUARTER' }
   | { type: 'SET_QUARTER'; quarter: Quarter }
   | {
@@ -47,7 +55,7 @@ export type Action =
       teamBScore: number;
     }
   | { type: 'UPDATE_QUARTER_SCORE'; quarter: Quarter; teamAScore: number; teamBScore: number }
-  | { type: 'UPDATE_TEAM'; side: Side; patch: Partial<Omit<Team, 'players'>> }
+  | { type: 'UPDATE_TEAM'; side: Side; patch: Partial<Omit<Team, 'players' | 'captainId'>> }
   | { type: 'ADD_PLAYER'; side: Side; player: Player }
   | { type: 'UPDATE_PLAYER'; side: Side; playerId: string; patch: Partial<Player> }
   | { type: 'DELETE_PLAYER'; side: Side; playerId: string };
@@ -177,15 +185,43 @@ export function reducer(state: AppState, action: Action): AppState {
       );
 
     case 'FINISH_GAME':
-      return mapActive(state, g => touch({ ...g, finished: true }));
+      return mapActive(state, g =>
+        touch({
+          ...g,
+          outcome: action.outcome,
+          finished: action.outcome.kind !== 'live'
+        })
+      );
 
     case 'REOPEN_GAME':
       return {
         ...state,
         games: state.games.map(g =>
-          g.id === action.id ? { ...g, finished: false, updatedAt: Date.now() } : g
+          g.id === action.id
+            ? {
+                ...g,
+                outcome: { kind: 'live' as const },
+                finished: false,
+                updatedAt: Date.now()
+              }
+            : g
         )
       };
+
+    case 'SET_CAPTAIN':
+      return mapActive(state, g => {
+        const sideKey = action.side === 'A' ? 'teamA' : 'teamB';
+        const team = g[sideKey];
+        const newCaptainId =
+          team.captainId === action.playerId ? undefined : action.playerId;
+        return touch({
+          ...g,
+          [sideKey]: { ...team, captainId: newCaptainId }
+        });
+      });
+
+    case 'UPDATE_GAME_DETAILS':
+      return mapActive(state, g => touch({ ...g, ...action.patch }));
 
     case 'SET_LAYOUT':
       return mapActive(state, g => touch({ ...g, layout: action.layout }));
