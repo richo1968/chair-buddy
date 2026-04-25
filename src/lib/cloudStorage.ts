@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { migrateGame } from './storage';
 import type { Game } from '@/types';
 
 interface GameRow {
@@ -19,7 +20,10 @@ export async function loadGamesFromCloud(userId: string): Promise<Game[]> {
     console.error('[cloud] load failed', error);
     return [];
   }
-  return (data as unknown as GameRow[]).map(row => row.data);
+  // Run the same migration we use for localStorage — cloud rows saved before
+  // a schema bump can be missing newer fields (e.g. `outcome`), which would
+  // otherwise crash the renderer accessing them.
+  return (data as unknown as GameRow[]).map(row => migrateGame(row.data));
 }
 
 export async function upsertGameToCloud(

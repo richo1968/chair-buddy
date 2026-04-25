@@ -54,11 +54,25 @@ function migrateEvent(e: GameEvent): GameEvent {
   return e;
 }
 
-function migrateGame(g: LegacyGame): Game {
+const VALID_OUTCOME_KINDS = new Set(['live', 'final', 'forfeit', 'default']);
+
+function isValidOutcome(o: unknown): o is Game['outcome'] {
+  return (
+    !!o &&
+    typeof o === 'object' &&
+    'kind' in o &&
+    typeof (o as { kind: unknown }).kind === 'string' &&
+    VALID_OUTCOME_KINDS.has((o as { kind: string }).kind)
+  );
+}
+
+export function migrateGame(g: LegacyGame): Game {
   const base = g as Game;
   const finished = g.finished ?? false;
-  // Bring legacy `finished: boolean` forward as `outcome` if missing.
-  const outcome: Game['outcome'] = base.outcome
+  // Bring legacy `finished: boolean` forward as `outcome` if missing or
+  // malformed. Defensive: cloud-saved games from before this schema change
+  // won't have an outcome field at all — must produce one or rendering crashes.
+  const outcome: Game['outcome'] = isValidOutcome(base.outcome)
     ? base.outcome
     : finished
       ? { kind: 'final' }
