@@ -41,7 +41,7 @@ export function LoginModal({ open, onClose }: Props) {
   };
 
   const submitCode = async () => {
-    if (code.replace(/\D/g, '').length < 6) return;
+    if (code.replace(/\D/g, '').length < 4) return;
     setAction('verifying');
     setError(null);
     const result = await verifyCode(email, code);
@@ -62,10 +62,10 @@ export function LoginModal({ open, onClose }: Props) {
     <Modal
       open
       onClose={onClose}
-      title={step === 'email' ? 'Sign in to sync your games' : 'Enter the 6-digit code'}
+      title={step === 'email' ? 'Sign in to sync your games' : 'Enter the sign-in code'}
       subtitle={
         step === 'email'
-          ? 'A 6-digit sign-in code will be emailed to you.'
+          ? 'A sign-in code will be emailed to you.'
           : `We sent a code to ${email}. It expires in a few minutes.`
       }
       size="md"
@@ -110,7 +110,7 @@ export function LoginModal({ open, onClose }: Props) {
             </Button>
             <Button
               disabled={
-                code.replace(/\D/g, '').length < 6 ||
+                code.replace(/\D/g, '').length < 4 ||
                 action === 'verifying'
               }
               onClick={submitCode}
@@ -163,24 +163,27 @@ export function LoginModal({ open, onClose }: Props) {
         <div className="space-y-3">
           <label className="block">
             <span className="block text-sm text-muted-fg mb-1.5">
-              6-digit code
+              Sign-in code
             </span>
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={e =>
+                setCode(e.target.value.replace(/\D/g, '').slice(0, 12))
+              }
               onKeyDown={e => e.key === 'Enter' && submitCode()}
-              placeholder="123456"
+              placeholder="••••••••"
               autoFocus
-              maxLength={6}
-              className="h-16 w-full rounded-2xl bg-surface-hi border border-border px-4 text-center text-3xl font-mono font-bold tracking-[0.4em]"
+              maxLength={12}
+              className="h-16 w-full rounded-2xl bg-surface-hi border border-border px-4 text-center text-3xl font-mono font-bold tracking-[0.3em]"
             />
           </label>
           <div className="text-xs text-muted-fg">
-            Open the email titled "Confirm your sign-in" and copy the 6-digit
-            code at the top of the message.
+            Open the sign-in email and copy the numeric code at the top of the
+            message — it'll be 6 to 10 digits depending on your Supabase
+            settings.
           </div>
           {error && <div className="text-sm text-danger">{error}</div>}
         </div>
