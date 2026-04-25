@@ -19,13 +19,6 @@ interface Props {
   ) => void;
 }
 
-const PLAYER_TYPES: FoulType[] = [
-  'personal',
-  'technical',
-  'unsportsmanlike',
-  'disqualifying'
-];
-
 export function FoulModal({
   open,
   game,
@@ -68,8 +61,10 @@ export function FoulModal({
     return { attempted: ftAtt, made: ftMd };
   };
 
-  const availableTypes: FoulType[] =
-    subject.kind === 'player' ? PLAYER_TYPES : ['technical'];
+  const commit = (type: FoulType, ftOverride?: FreeThrows) => {
+    if (!valid) return;
+    onCommit(type, clock, ftOverride ?? computeFreeThrows());
+  };
 
   let chip: JSX.Element;
   let titleText: string;
@@ -111,6 +106,8 @@ export function FoulModal({
       ? `Quarter ${game.currentQuarter} — tap a foul type to log`
       : `Quarter ${game.currentQuarter} — does not count toward team fouls`;
 
+  const isPlayer = subject.kind === 'player';
+
   return (
     <Modal
       open={open}
@@ -122,22 +119,57 @@ export function FoulModal({
       <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
         <GameClockInput value={clock} onChange={setClock} />
         <div className="grid gap-3 grid-cols-1 w-[300px]">
-          {availableTypes.map(t => (
-            <button
-              key={t}
-              type="button"
+          {isPlayer ? (
+            <>
+              <FoulTypeButton
+                disabled={!valid}
+                label={FOUL_TYPE_LABEL.personal}
+                onClick={() => commit('personal')}
+              />
+              <div className="grid grid-cols-3 gap-2 -mt-1">
+                {[1, 2, 3].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={!valid}
+                    onClick={() =>
+                      commit('personal', { attempted: n, made: 0 })
+                    }
+                    className={cn(
+                      'rounded-xl border-2 py-2 text-base font-bold font-mono tabular-nums',
+                      'bg-surface border-border text-fg',
+                      'active:brightness-125 transition-none',
+                      'disabled:opacity-40 disabled:cursor-not-allowed'
+                    )}
+                    title={`Personal foul + ${n} free throw${n === 1 ? '' : 's'} awarded`}
+                  >
+                    P{n}
+                  </button>
+                ))}
+              </div>
+              <FoulTypeButton
+                disabled={!valid}
+                label={FOUL_TYPE_LABEL.technical}
+                onClick={() => commit('technical')}
+              />
+              <FoulTypeButton
+                disabled={!valid}
+                label={FOUL_TYPE_LABEL.unsportsmanlike}
+                onClick={() => commit('unsportsmanlike')}
+              />
+              <FoulTypeButton
+                disabled={!valid}
+                label={FOUL_TYPE_LABEL.disqualifying}
+                onClick={() => commit('disqualifying')}
+              />
+            </>
+          ) : (
+            <FoulTypeButton
               disabled={!valid}
-              onClick={() => onCommit(t, clock, computeFreeThrows())}
-              className={cn(
-                'rounded-2xl border-2 px-4 py-4 text-lg font-bold',
-                'bg-surface-hi border-border text-fg',
-                'active:brightness-125 transition-none',
-                'disabled:opacity-40 disabled:cursor-not-allowed'
-              )}
-            >
-              {FOUL_TYPE_LABEL[t]}
-            </button>
-          ))}
+              label={FOUL_TYPE_LABEL.technical}
+              onClick={() => commit('technical')}
+            />
+          )}
 
           <div className="rounded-xl border border-border bg-surface overflow-hidden">
             <button
@@ -146,7 +178,7 @@ export function FoulModal({
               className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold active:brightness-110 transition-none"
             >
               <span className="text-muted-fg">
-                Free throws (optional)
+                Free throws (manual)
                 {ftHasInput && ftValid && (
                   <span className="ml-2 text-fg">
                     {ftMd}/{ftAtt}
@@ -200,9 +232,9 @@ export function FoulModal({
                   </div>
                 )}
                 <div className="text-[10px] text-muted-fg leading-relaxed">
-                  Optional. Records the free throws awarded as a result of this
-                  foul. Doesn't change the running score (you'll enter that
-                  cumulatively at end of quarter).
+                  Use this when the FT count isn't covered by P1/P2/P3 — e.g.
+                  technical, unsportsmanlike, or recording made shots after the
+                  fact. Edit later via the event log too.
                 </div>
               </div>
             )}
@@ -210,5 +242,31 @@ export function FoulModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+function FoulTypeButton({
+  label,
+  disabled,
+  onClick
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'rounded-2xl border-2 px-4 py-4 text-lg font-bold',
+        'bg-surface-hi border-border text-fg',
+        'active:brightness-125 transition-none',
+        'disabled:opacity-40 disabled:cursor-not-allowed'
+      )}
+    >
+      {label}
+    </button>
   );
 }
