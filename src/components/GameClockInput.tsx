@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { Delete, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,18 +37,59 @@ export function GameClockInput({
   size = 'lg',
   className
 }: GameClockInputProps) {
+  // Tracks the last value we emitted via onChange so we can distinguish
+  // our own updates from external changes made by the parent.
+  const lastEmitted = useRef(value);
+
+  // Overwrite mode: when true the first digit keystroke clears the display
+  // and starts a fresh 4-digit entry rather than appending to the buffer.
+  // This means a pre-filled default is never "in the way" — you just start
+  // typing and it replaces immediately.
+  const [overwrite, setOverwrite] = useState(true);
+
+  // Derived-state: if the parent changed the value to something we didn't
+  // emit (e.g. pre-filling from lastGameClock, or a reason-change in the
+  // Possession modal), re-enter overwrite mode so the next keypress starts fresh.
+  const [prevPropValue, setPrevPropValue] = useState(value);
+  if (value !== prevPropValue) {
+    setPrevPropValue(value);
+    if (value !== lastEmitted.current) {
+      setOverwrite(true);
+    }
+  }
+
   const buffer = toBuffer(value);
   const valid = isValidGameClock(value);
 
+  const emit = (next: string) => {
+    lastEmitted.current = next;
+    onChange(next);
+  };
+
   const pushDigit = (digit: string) => {
-    const next = (buffer + digit).slice(-4);
-    onChange(fromBuffer(next));
+    if (overwrite) {
+      // First keystroke: wipe the pre-filled value and start fresh
+      setOverwrite(false);
+      emit(fromBuffer('000' + digit));
+    } else {
+      emit(fromBuffer((buffer + digit).slice(-4)));
+    }
   };
+
   const backspace = () => {
-    const next = ('0' + buffer).slice(0, 4);
-    onChange(fromBuffer(next));
+    if (overwrite) {
+      // Backspace on a pre-fill: clear to 00:00 and drop out of overwrite
+      setOverwrite(false);
+      emit(ZERO_CLOCK);
+    } else {
+      emit(fromBuffer(('0' + buffer).slice(0, 4)));
+    }
   };
-  const clear = () => onChange(ZERO_CLOCK);
+
+  const clear = () => {
+    setOverwrite(false);
+    emit(ZERO_CLOCK);
+  };
 
   const displaySizeCls =
     size === 'lg'
@@ -62,9 +104,11 @@ export function GameClockInput({
           'rounded-2xl border-2 flex items-center justify-center',
           'font-mono font-bold tracking-wider tabular-nums',
           displaySizeCls,
-          valid
-            ? 'bg-surface-hi border-border text-fg'
-            : 'bg-surface-hi border-danger text-danger'
+          !valid
+            ? 'bg-surface-hi border-danger text-danger'
+            : overwrite
+              ? 'bg-surface-hi border-accent/60 text-fg/60'
+              : 'bg-surface-hi border-border text-fg'
         )}
       >
         {fromBuffer(buffer)}
