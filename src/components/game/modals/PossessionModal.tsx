@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import type {
   ArrowDirection,
@@ -11,7 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
   GameClockInput,
-  ZERO_CLOCK,
+  DEFAULT_CLOCK,
   isValidGameClock
 } from '@/components/GameClockInput';
 import {
@@ -64,10 +64,18 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
     return 'held-ball';
   })();
 
+  const clockForReason = (r: PossessionReason) =>
+    r === 'quarter-start' ? DEFAULT_CLOCK : game.lastGameClock;
+
   const [direction, setDirection] = useState<ArrowDirection | null>(defaultDirection);
   const [team, setTeam] = useState<Side | null>(defaultTeam);
-  const [clock, setClock] = useState(ZERO_CLOCK);
+  const [clock, setClock] = useState(() => isInitial ? DEFAULT_CLOCK : clockForReason(defaultReason));
   const [reason, setReason] = useState<PossessionReason>(defaultReason);
+
+  const changeReason = useCallback((r: PossessionReason) => {
+    setReason(r);
+    setClock(clockForReason(r));
+  }, [game.lastGameClock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null;
 
@@ -128,7 +136,7 @@ export function PossessionModal({ open, game, onClose, onCommit }: Props) {
                     value={r}
                     label={POSSESSION_REASON_LABEL[r]}
                     active={reason === r}
-                    onClick={() => setReason(r)}
+                    onClick={() => changeReason(r)}
                   />
                 ))}
               </div>

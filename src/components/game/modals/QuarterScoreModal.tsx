@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Game } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { GameClockInput, isValidGameClock, ZERO_CLOCK } from '@/components/GameClockInput';
+import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
 import { nextQuarter, totalScore } from '@/lib/game';
 
 interface Props {
@@ -32,7 +32,7 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
   const [cumulativeB, setCumulativeB] = useState(
     existing ? String(prevCumulativeB + existing.teamBScore) : ''
   );
-  const [clock, setClock] = useState(ZERO_CLOCK);
+  const [clock, setClock] = useState(game.lastGameClock);
   const [flipArrow, setFlipArrow] = useState(true);
 
   if (!open) return null;

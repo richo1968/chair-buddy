@@ -5,7 +5,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
   GameClockInput,
-  ZERO_CLOCK,
   isValidGameClock
 } from '@/components/GameClockInput';
 import { cn } from '@/lib/utils';
@@ -20,7 +19,7 @@ interface Props {
 export function ProtestModal({ open, game, onClose, onCommit }: Props) {
   const [team, setTeam] = useState<Side | null>(null);
   const [reason, setReason] = useState('');
-  const [clock, setClock] = useState(ZERO_CLOCK);
+  const [clock, setClock] = useState(game.lastGameClock);
 
   if (!open) return null;
 
