@@ -14,9 +14,9 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   cloudEnabled: boolean;
-  /** Send the user a 6-digit OTP code (and a magic link) by email. */
+  /** Send the user an OTP code (and a magic link) by email. */
   signIn: (email: string) => Promise<{ error: string | null }>;
-  /** Verify the 6-digit OTP code the user typed. Establishes the session in this device's storage on success. */
+  /** Verify the OTP code the user typed. Establishes the session in this device's storage on success. */
   verifyCode: (email: string, code: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }

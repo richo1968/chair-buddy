@@ -153,7 +153,7 @@ export function LoginModal({ open, onClose }: Props) {
             />
           </label>
           <div className="text-xs text-muted-fg leading-relaxed">
-            Use the 6-digit code from the email — works inside this PWA.
+            Enter the code from the email — works inside this PWA.
             (You'll also see a magic link in the email; ignore it on iPad
             because it opens Safari outside this app.)
           </div>
