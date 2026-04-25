@@ -9,6 +9,7 @@ import {
   type RowStatus
 } from '@/lib/playerParser';
 import type { Player } from '@/types';
+import { contrastText } from '@/lib/colours';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -82,8 +83,7 @@ export function BulkAddPlayersModal({
           <Button
             disabled={okCount === 0}
             onClick={commit}
-            style={{ backgroundColor: accent }}
-            className="text-bg"
+            style={{ backgroundColor: accent, color: contrastText(accent) }}
           >
             <ClipboardPaste className="w-4 h-4" />
             Add {okCount} {okCount === 1 ? 'player' : 'players'}

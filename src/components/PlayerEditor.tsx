@@ -3,6 +3,7 @@ import { Plus, Trash2, Pencil, Check, X, ClipboardPaste } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
 import { newId, sortPlayers } from '@/lib/game';
+import { contrastText } from '@/lib/colours';
 import { BulkAddPlayersModal } from './BulkAddPlayersModal';
 
 interface Props {
@@ -108,10 +109,10 @@ export function PlayerEditor({ players, onChange, accent }: Props) {
           disabled={!canAdd}
           aria-label="Add player"
           className={cn(
-            'h-12 w-12 rounded-xl flex items-center justify-center text-bg font-bold',
+            'h-12 w-12 rounded-xl flex items-center justify-center font-bold',
             'active:brightness-110 transition-none disabled:opacity-40'
           )}
-          style={{ backgroundColor: accent }}
+          style={{ backgroundColor: accent, color: contrastText(accent) }}
         >
           <Plus className="w-5 h-5" />
         </button>
