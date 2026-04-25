@@ -7,6 +7,7 @@ import type {
   Game,
   GameEvent,
   PossessionChangeEvent,
+  ProtestEvent,
   QuarterScoreRecordedEvent,
   Side,
   WarningEvent
@@ -49,6 +50,19 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
   const [note, setNote] = useState(
     event?.kind === 'warning' ? event.note ?? '' : ''
   );
+  const [protestReason, setProtestReason] = useState(
+    event?.kind === 'protest' ? event.reason ?? '' : ''
+  );
+  const [ftAttempted, setFtAttempted] = useState(
+    event?.kind === 'foul' && event.freeThrows
+      ? String(event.freeThrows.attempted)
+      : ''
+  );
+  const [ftMade, setFtMade] = useState(
+    event?.kind === 'foul' && event.freeThrows
+      ? String(event.freeThrows.made)
+      : ''
+  );
 
   if (!open || !event) return null;
 
@@ -57,10 +71,27 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
   const save = () => {
     if (!valid) return;
     if (event.kind === 'foul' && foulType) {
+      const ftAtt = parseInt(ftAttempted, 10);
+      const ftMd = parseInt(ftMade, 10);
+      const ftHasInput = ftAttempted.length > 0 || ftMade.length > 0;
+      const ftValid =
+        ftHasInput &&
+        Number.isFinite(ftAtt) &&
+        Number.isFinite(ftMd) &&
+        ftAtt >= 0 &&
+        ftMd >= 0 &&
+        ftMd <= ftAtt;
+      const patch: Partial<FoulEvent> = {
+        gameClock: clock,
+        type: foulType,
+        freeThrows: ftValid
+          ? { attempted: ftAtt, made: ftMd }
+          : undefined
+      };
       dispatch({
         type: 'UPDATE_EVENT',
         eventId: event.id,
-        patch: { gameClock: clock, type: foulType } as Partial<FoulEvent>
+        patch
       });
     } else if (event.kind === 'possessionChange' && possession && arrowDir) {
       dispatch({
@@ -80,6 +111,15 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
           gameClock: clock,
           note: note.trim() || undefined
         } as Partial<WarningEvent>
+      });
+    } else if (event.kind === 'protest') {
+      dispatch({
+        type: 'UPDATE_EVENT',
+        eventId: event.id,
+        patch: {
+          gameClock: clock,
+          reason: protestReason.trim() || event.reason
+        } as Partial<ProtestEvent>
       });
     } else if (event.kind === 'quarterScoreRecorded') {
       const a = Number(scoreA);
@@ -143,28 +183,70 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
         <GameClockInput value={clock} onChange={setClock} />
         <div className="w-[280px] space-y-3">
           {event.kind === 'foul' && (
-            <div className="space-y-2">
-              <div className="text-sm text-muted-fg">Foul type</div>
-              {(
-                (event.on.kind === 'player'
-                  ? ['personal', 'technical', 'unsportsmanlike', 'disqualifying']
-                  : ['technical']) as FoulType[]
-              ).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setFoulType(t)}
-                  className={cn(
-                    'w-full rounded-2xl border-2 px-3 py-3 text-base font-semibold text-left',
-                    'active:brightness-110 transition-none',
-                    foulType === t
-                      ? 'border-accent bg-surface-hi'
-                      : 'border-border bg-surface'
-                  )}
-                >
-                  {FOUL_TYPE_LABEL[t]}
-                </button>
-              ))}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-fg">Foul type</div>
+                {(
+                  (event.on.kind === 'player'
+                    ? ['personal', 'technical', 'unsportsmanlike', 'disqualifying']
+                    : ['technical']) as FoulType[]
+                ).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFoulType(t)}
+                    className={cn(
+                      'w-full rounded-2xl border-2 px-3 py-3 text-base font-semibold text-left',
+                      'active:brightness-110 transition-none',
+                      foulType === t
+                        ? 'border-accent bg-surface-hi'
+                        : 'border-border bg-surface'
+                    )}
+                  >
+                    {FOUL_TYPE_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-xl border border-border bg-surface px-3 py-2 space-y-2">
+                <div className="text-xs text-muted-fg uppercase tracking-widest">
+                  Free throws (optional)
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-[10px] text-muted-fg mb-0.5">
+                      Attempted
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={ftAttempted}
+                      onChange={e =>
+                        setFtAttempted(e.target.value.replace(/\D/g, ''))
+                      }
+                      placeholder="0"
+                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[10px] text-muted-fg mb-0.5">
+                      Made
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={ftMade}
+                      onChange={e =>
+                        setFtMade(e.target.value.replace(/\D/g, ''))
+                      }
+                      placeholder="0"
+                      className="h-10 w-full rounded-lg bg-surface-hi border border-border px-2 text-center font-mono text-base"
+                    />
+                  </label>
+                </div>
+                <div className="text-[10px] text-muted-fg leading-relaxed">
+                  Leave blank to clear FT info.
+                </div>
+              </div>
             </div>
           )}
 
@@ -236,6 +318,20 @@ export function EditEventModal({ open, game, event, onClose }: Props) {
               <textarea
                 value={note}
                 onChange={e => setNote(e.target.value)}
+                rows={5}
+                className="w-full rounded-2xl bg-surface-hi border border-border p-3 text-base resize-none"
+              />
+            </label>
+          )}
+
+          {event.kind === 'protest' && (
+            <label className="block">
+              <span className="block text-sm text-muted-fg mb-1.5">
+                Protest reason
+              </span>
+              <textarea
+                value={protestReason}
+                onChange={e => setProtestReason(e.target.value)}
                 rows={5}
                 className="w-full rounded-2xl bg-surface-hi border border-border p-3 text-base resize-none"
               />
