@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Timer } from 'lucide-react';
 import type { FoulSubject, FoulType, FreeThrows, Game, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
 import { FOUL_TYPE_LABEL } from '@/lib/events';
+import { timeoutStatus } from '@/lib/game';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -16,6 +18,11 @@ interface Props {
     gameClock: string,
     freeThrows: FreeThrows | undefined
   ) => void;
+  /** Start a 1-minute countdown for the given side. Used by the inline
+   *  timeout buttons so the chair can fire off a timeout while still
+   *  entering foul data. The TimeoutModal then opens after this foul is
+   *  committed (or cancelled) so the timeout's own clock can be logged. */
+  onStartTimeout: (team: Side) => void;
 }
 
 export function FoulModal({
@@ -24,7 +31,8 @@ export function FoulModal({
   side,
   subject,
   onClose,
-  onCommit
+  onCommit,
+  onStartTimeout
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
   const player =
@@ -86,6 +94,10 @@ export function FoulModal({
 
   const isPlayer = subject.kind === 'player';
 
+  // Bench layout — left team's timeout button on the left, right team's on the right.
+  const leftSide: Side = game.layout === 'A-left' ? 'A' : 'B';
+  const rightSide: Side = leftSide === 'A' ? 'B' : 'A';
+
   return (
     <Modal
       open={open}
@@ -94,6 +106,7 @@ export function FoulModal({
       subtitle={subtitle}
       size="lg"
     >
+      <div className="space-y-4">
       <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
         <GameClockInput value={clock} onChange={setClock} />
         <div className="grid gap-3 grid-cols-1 w-[300px]">
@@ -148,7 +161,70 @@ export function FoulModal({
           )}
         </div>
       </div>
+
+      {/* Timeout shortcuts — start a 1-minute countdown for either team
+          without leaving this modal. The timeout's own clock entry happens
+          after this foul is committed (or cancelled). */}
+      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+        <TimeoutQuickButton
+          game={game}
+          side={leftSide}
+          onClick={() => onStartTimeout(leftSide)}
+        />
+        <TimeoutQuickButton
+          game={game}
+          side={rightSide}
+          onClick={() => onStartTimeout(rightSide)}
+        />
+      </div>
+      </div>
     </Modal>
+  );
+}
+
+function TimeoutQuickButton({
+  game,
+  side,
+  onClick
+}: {
+  game: Game;
+  side: Side;
+  onClick: () => void;
+}) {
+  const team = side === 'A' ? game.teamA : game.teamB;
+  const status = timeoutStatus(game, side);
+  const noneLeft = status.remaining === 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={noneLeft}
+      className={cn(
+        'rounded-2xl border-2 border-border p-3 flex items-center gap-3 text-left',
+        'active:brightness-110 transition-none',
+        'disabled:opacity-40 disabled:cursor-not-allowed'
+      )}
+      style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
+      title={
+        noneLeft
+          ? `${team.name || `Team ${side}`} has no timeouts left this ${status.phaseLabel.toLowerCase()}`
+          : `Start a 1-minute timeout for ${team.name || `Team ${side}`} (${status.remaining} of ${status.max} left)`
+      }
+    >
+      <Timer className="w-6 h-6 shrink-0 opacity-90" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-widest opacity-75 leading-tight">
+          Start timeout
+        </div>
+        <div className="text-sm font-bold truncate leading-tight">
+          {team.name || `Team ${side}`}
+        </div>
+      </div>
+      <div className="text-xs font-mono font-bold opacity-80 shrink-0 tabular-nums">
+        {status.remaining}/{status.max}
+      </div>
+    </button>
   );
 }
 

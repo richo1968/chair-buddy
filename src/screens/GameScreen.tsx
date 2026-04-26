@@ -413,6 +413,7 @@ export function GameScreen() {
           subject={foulTarget.subject}
           onClose={() => setFoulTarget(null)}
           onCommit={logFoul}
+          onStartTimeout={startTimeout}
         />
       )}
       {warningType && (
@@ -440,7 +441,9 @@ export function GameScreen() {
           onCommit={recordQuarterScore}
         />
       )}
-      {timeoutSide !== null && (
+      {/* If the chair started this timeout from inside the FoulModal,
+          defer the TimeoutModal until the foul has been entered first. */}
+      {timeoutSide !== null && !foulTarget && (
         <TimeoutModal
           open={true}
           game={activeGame}
