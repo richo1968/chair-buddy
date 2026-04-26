@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Users, Palette, Timer, GripHorizontal } from 'lucide-react';
+import { Users, Pencil, Timer, GripHorizontal } from 'lucide-react';
 import type { FoulSubject, Game, GameEvent, Side } from '@/types';
 import { PlayerTile } from './PlayerTile';
 import { StaffChip } from './StaffChip';
@@ -78,16 +78,22 @@ export function TeamPanel({
         onClick={onOpenColours}
         className="rounded-2xl border border-border px-3 py-2 flex items-center justify-between gap-2 active:brightness-110 transition-none text-left"
         style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
+        title="Edit team name, jersey colour, and coach names"
       >
         <div className="min-w-0 flex-1">
           <div className="text-[10px] uppercase tracking-widest opacity-70">
             Team {side}
           </div>
-          <div className="text-lg font-bold truncate">
+          <div className="text-lg font-bold truncate leading-tight">
             {team.name || `Team ${side}`}
           </div>
+          <div className="text-[11px] opacity-70 truncate mt-0.5">
+            {team.coachName
+              ? `Coach: ${team.coachName}`
+              : '+ Tap to add coach name'}
+          </div>
         </div>
-        <Palette className="w-4 h-4 opacity-70 shrink-0" />
+        <Pencil className="w-4 h-4 opacity-70 shrink-0" />
       </button>
 
       <div

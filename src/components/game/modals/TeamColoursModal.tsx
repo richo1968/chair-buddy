@@ -46,8 +46,8 @@ export function TeamColoursModal({ open, game, side, onClose }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={`Team ${side} — details`}
-      subtitle="Name, colours, and coaching staff."
+      title={`Team ${side} — edit details`}
+      subtitle="Team name, jersey colour, head coach and assistant coach."
       size="lg"
       footer={
         <>
