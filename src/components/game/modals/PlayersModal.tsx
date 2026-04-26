@@ -24,6 +24,53 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
       size="lg"
       footer={<Button onClick={onClose}>Done</Button>}
     >
+      <div className="space-y-5">
+      {/* Coaching staff — editable mid-game from the same modal that opens
+          via 'Manage players'. The team-header pencil button still opens
+          the colours/details modal which also has these fields, but having
+          them here too means the chair never has to hunt for them. */}
+      <div className="rounded-2xl border border-border bg-surface-hi p-4 space-y-3">
+        <div className="text-xs uppercase tracking-widest text-muted-fg font-semibold">
+          Coaching staff
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="block text-sm text-muted-fg mb-1.5">Head coach</span>
+            <input
+              type="text"
+              value={team.coachName ?? ''}
+              onChange={e =>
+                dispatch({
+                  type: 'UPDATE_TEAM',
+                  side,
+                  patch: { coachName: e.target.value || undefined }
+                })
+              }
+              placeholder="e.g. M. Smith"
+              className="h-12 w-full rounded-xl bg-surface border border-border px-3 text-base"
+            />
+          </label>
+          <label className="block">
+            <span className="block text-sm text-muted-fg mb-1.5">
+              Assistant coach
+            </span>
+            <input
+              type="text"
+              value={team.assistantCoachName ?? ''}
+              onChange={e =>
+                dispatch({
+                  type: 'UPDATE_TEAM',
+                  side,
+                  patch: { assistantCoachName: e.target.value || undefined }
+                })
+              }
+              placeholder="e.g. R. Jones"
+              className="h-12 w-full rounded-xl bg-surface border border-border px-3 text-base"
+            />
+          </label>
+        </div>
+      </div>
+
       <PlayerEditor
         players={team.players}
         accent={team.jerseyColour}
@@ -61,6 +108,7 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
           }
         }}
       />
+      </div>
     </Modal>
   );
 }
