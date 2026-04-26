@@ -23,6 +23,10 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Where Supabase magic-link emails should send the user. Always production —
+ *  see comment in `signIn` for why we don't use window.location.origin. */
+const PRODUCTION_URL = 'https://app.chairbuddy.com.au';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,10 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        // The link still works for desktop browsers; the OTP code is the
-        // primary path for the iPad PWA, since clicking the link would open
-        // Safari outside the standalone PWA's storage container.
-        emailRedirectTo: window.location.origin
+        // Magic-link target. Always send users to the production domain —
+        // window.location.origin would be http://localhost:5173 when signing
+        // in from `npm run dev`, which would bake an unusable link into the
+        // email. The OTP code is the primary auth path on iPad anyway; the
+        // link is a fallback for desktop browsers.
+        emailRedirectTo: PRODUCTION_URL
       }
     });
     return { error: error?.message ?? null };
