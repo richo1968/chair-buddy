@@ -47,10 +47,13 @@ export function PlayerTile({
       className={cn(
         'relative aspect-square rounded-2xl flex flex-col items-center justify-center',
         'active:brightness-110 transition-none select-none',
+        // Alert borders use a 4px coloured ring for the alert itself + a 2px
+        // white inset ring as a separator so the alert pops against any
+        // jersey colour (otherwise red border + red jersey is invisible).
         redBorder
-          ? 'border-4 border-danger'
+          ? 'border-4 border-danger ring-2 ring-inset ring-white'
           : orangeBorder
-            ? 'border-4 border-warn'
+            ? 'border-4 border-warn ring-2 ring-inset ring-white'
             : 'border-2 border-border'
       )}
       style={{ backgroundColor: jerseyColour, color: numberColour }}
