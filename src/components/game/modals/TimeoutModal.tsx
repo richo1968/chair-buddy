@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Square, AlertTriangle, Clock } from 'lucide-react';
-import type { Game, Side } from '@/types';
+import type { Game, Quarter, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
@@ -16,6 +16,9 @@ interface Props {
   onClose: () => void;
   onCommit: (gameClock: string, forfeited: boolean) => void;
   onCancelTimer: () => void;
+  /** When set, this timeout is being logged retroactively into a past quarter.
+   *  No live timer is running in this mode. */
+  quarter?: Quarter;
 }
 
 export function TimeoutModal({
@@ -24,16 +27,19 @@ export function TimeoutModal({
   side,
   onClose,
   onCommit,
-  onCancelTimer
+  onCancelTimer,
+  quarter
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
-  const [clock, setClock] = useState(game.lastGameClock);
+  const isPastEntry = quarter !== undefined && quarter !== game.currentQuarter;
+  const displayQuarter = quarter ?? game.currentQuarter;
+  const [clock, setClock] = useState(isPastEntry ? '10:00' : game.lastGameClock);
 
   if (!open) return null;
 
   const valid = isValidGameClock(clock);
-  const status = timeoutStatus(game, side);
-  const isQ4 = game.currentQuarter === 'Q4';
+  const status = timeoutStatus(game, side, quarter);
+  const isQ4 = displayQuarter === 'Q4';
 
   return (
     <Modal
@@ -56,7 +62,11 @@ export function TimeoutModal({
           </span>
         </span>
       }
-      subtitle={`${status.phaseLabel} — ${status.used} of ${status.max} used. Timer is running.`}
+      subtitle={
+        isPastEntry
+          ? `Past entry · ${displayQuarter} — ${status.phaseLabel}, ${status.used} of ${status.max} used.`
+          : `${status.phaseLabel} — ${status.used} of ${status.max} used. Timer is running.`
+      }
       size="lg"
       footer={
         <>
@@ -99,15 +109,17 @@ export function TimeoutModal({
               Forfeit timeout
             </Button>
           )}
-          <div className="text-xs text-muted-fg pt-2 leading-relaxed">
-            <div className="flex items-start gap-2">
-              <Square className="w-3 h-3 mt-0.5 shrink-0" />
-              <div>
-                The 1-minute timer started when you tapped the Timeout button.
-                Cancelling or forfeiting will stop the timer.
+          {!isPastEntry && (
+            <div className="text-xs text-muted-fg pt-2 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <Square className="w-3 h-3 mt-0.5 shrink-0" />
+                <div>
+                  The 1-minute timer started when you tapped the Timeout button.
+                  Cancelling or forfeiting will stop the timer.
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </Modal>

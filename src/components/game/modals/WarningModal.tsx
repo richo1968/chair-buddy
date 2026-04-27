@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Game, WarningTarget, WarningType } from '@/types';
+import type { Game, Quarter, WarningTarget, WarningType } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
@@ -16,10 +16,14 @@ interface Props {
     note: string | undefined,
     gameClock: string
   ) => void;
+  /** When set, this warning is being logged retroactively into a past quarter. */
+  quarter?: Quarter;
 }
 
-export function WarningModal({ open, game, type, onClose, onCommit }: Props) {
-  const [clock, setClock] = useState(game.lastGameClock);
+export function WarningModal({ open, game, type, onClose, onCommit, quarter }: Props) {
+  const isPastEntry = quarter !== undefined && quarter !== game.currentQuarter;
+  const displayQuarter = quarter ?? game.currentQuarter;
+  const [clock, setClock] = useState(isPastEntry ? '10:00' : game.lastGameClock);
   const [note, setNote] = useState('');
   const [target, setTarget] = useState<WarningTarget | null>(null);
 
@@ -32,7 +36,7 @@ export function WarningModal({ open, game, type, onClose, onCommit }: Props) {
       open={open}
       onClose={onClose}
       title={WARNING_TYPE_LABEL[type]}
-      subtitle={`Quarter ${game.currentQuarter} — pick a team and enter the clock.`}
+      subtitle={`${isPastEntry ? 'Past entry · ' : ''}Quarter ${displayQuarter} — pick a team and enter the clock.`}
       size="lg"
       footer={
         <>

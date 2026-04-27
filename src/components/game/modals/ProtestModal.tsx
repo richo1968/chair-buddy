@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertOctagon } from 'lucide-react';
-import type { Game, Side } from '@/types';
+import type { Game, Quarter, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import {
@@ -14,12 +14,16 @@ interface Props {
   game: Game;
   onClose: () => void;
   onCommit: (team: Side, reason: string, gameClock: string) => void;
+  /** When set, this protest is being logged retroactively into a past quarter. */
+  quarter?: Quarter;
 }
 
-export function ProtestModal({ open, game, onClose, onCommit }: Props) {
+export function ProtestModal({ open, game, onClose, onCommit, quarter }: Props) {
+  const isPastEntry = quarter !== undefined && quarter !== game.currentQuarter;
+  const displayQuarter = quarter ?? game.currentQuarter;
   const [team, setTeam] = useState<Side | null>(null);
   const [reason, setReason] = useState('');
-  const [clock, setClock] = useState(game.lastGameClock);
+  const [clock, setClock] = useState(isPastEntry ? '10:00' : game.lastGameClock);
 
   if (!open) return null;
 
@@ -30,7 +34,11 @@ export function ProtestModal({ open, game, onClose, onCommit }: Props) {
       open
       onClose={onClose}
       title="Log a protest"
-      subtitle="A formal team protest, recorded by the chair (FIBA Internal Regulations B.4)."
+      subtitle={
+        isPastEntry
+          ? `Past entry · Quarter ${displayQuarter} — formal team protest (FIBA Internal Regulations B.4).`
+          : 'A formal team protest, recorded by the chair (FIBA Internal Regulations B.4).'
+      }
       size="lg"
       footer={
         <>

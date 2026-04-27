@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Timer } from 'lucide-react';
-import type { FoulSubject, FoulType, FreeThrows, Game, Side } from '@/types';
+import type { FoulSubject, FoulType, FreeThrows, Game, Quarter, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
 import { FOUL_TYPE_LABEL } from '@/lib/events';
@@ -23,6 +23,9 @@ interface Props {
    *  entering foul data. The TimeoutModal then opens after this foul is
    *  committed (or cancelled) so the timeout's own clock can be logged. */
   onStartTimeout: (team: Side) => void;
+  /** When set, this foul is being logged retroactively into a past quarter.
+   *  Affects the subtitle and the default clock (10:00 instead of lastGameClock). */
+  quarter?: Quarter;
 }
 
 export function FoulModal({
@@ -32,7 +35,8 @@ export function FoulModal({
   subject,
   onClose,
   onCommit,
-  onStartTimeout
+  onStartTimeout,
+  quarter
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
   const player =
@@ -40,7 +44,10 @@ export function FoulModal({
       ? team.players.find(p => p.id === subject.playerId)
       : null;
 
-  const [clock, setClock] = useState(game.lastGameClock);
+  const isPastEntry = quarter !== undefined && quarter !== game.currentQuarter;
+  const displayQuarter = quarter ?? game.currentQuarter;
+
+  const [clock, setClock] = useState(isPastEntry ? '10:00' : game.lastGameClock);
 
   if (!open) return null;
   if (subject.kind === 'player' && !player) return null;
@@ -87,10 +94,11 @@ export function FoulModal({
     </span>
   );
 
+  const retroPrefix = isPastEntry ? `Past entry · Quarter ${displayQuarter}` : `Quarter ${displayQuarter}`;
   const subtitle =
     subject.kind === 'player'
-      ? `Quarter ${game.currentQuarter} — tap a foul type to log`
-      : `Quarter ${game.currentQuarter} — does not count toward team fouls`;
+      ? `${retroPrefix} — tap a foul type to log`
+      : `${retroPrefix} — does not count toward team fouls`;
 
   const isPlayer = subject.kind === 'player';
 
@@ -164,19 +172,22 @@ export function FoulModal({
 
       {/* Timeout shortcuts — start a 1-minute countdown for either team
           without leaving this modal. The timeout's own clock entry happens
-          after this foul is committed (or cancelled). */}
-      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
-        <TimeoutQuickButton
-          game={game}
-          side={leftSide}
-          onClick={() => onStartTimeout(leftSide)}
-        />
-        <TimeoutQuickButton
-          game={game}
-          side={rightSide}
-          onClick={() => onStartTimeout(rightSide)}
-        />
-      </div>
+          after this foul is committed (or cancelled). Hidden when this is a
+          retroactive past-quarter entry — there is no live timeout to start. */}
+      {!isPastEntry && (
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+          <TimeoutQuickButton
+            game={game}
+            side={leftSide}
+            onClick={() => onStartTimeout(leftSide)}
+          />
+          <TimeoutQuickButton
+            game={game}
+            side={rightSide}
+            onClick={() => onStartTimeout(rightSide)}
+          />
+        </div>
+      )}
       </div>
     </Modal>
   );

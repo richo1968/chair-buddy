@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   BookOpenCheck,
   Flag,
+  History,
   Moon,
   Settings,
   Sun,
@@ -30,7 +31,9 @@ import { EndGameModal } from '@/components/game/modals/EndGameModal';
 import { OfficialsModal } from '@/components/game/modals/OfficialsModal';
 import { GameDetailsModal } from '@/components/game/modals/GameDetailsModal';
 import { ProtestModal } from '@/components/game/modals/ProtestModal';
-import { newId } from '@/lib/game';
+import { PastQuarterModal } from '@/components/game/modals/PastQuarterModal';
+import type { PastEntryResult } from '@/components/game/modals/PastQuarterModal';
+import { newId, previousQuarters } from '@/lib/game';
 import type {
   ArrowDirection,
   FoulSubject,
@@ -39,6 +42,7 @@ import type {
   GameEvent,
   GameOutcome,
   PossessionReason,
+  Quarter,
   Side,
   WarningTarget,
   WarningType
@@ -67,6 +71,10 @@ export function GameScreen() {
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [gameDetailsOpen, setGameDetailsOpen] = useState(false);
   const [protestOpen, setProtestOpen] = useState(false);
+  const [pastQuarterOpen, setPastQuarterOpen] = useState(false);
+  /** When set, the next foul/warning/timeout/protest entry is logged into this
+   *  past quarter instead of the current one. Cleared on commit or cancel. */
+  const [pastQuarterTarget, setPastQuarterTarget] = useState<Quarter | null>(null);
 
   // Persisted UI preference: ratio of the team-panel split between player
   // grid (top) and event log (bottom). Shared across both teams so the layout
@@ -88,6 +96,11 @@ export function GameScreen() {
   const leftSide: Side = activeGame.layout === 'A-left' ? 'A' : 'B';
   const rightSide: Side = leftSide === 'A' ? 'B' : 'A';
 
+  const eventQuarter = (): Quarter =>
+    pastQuarterTarget ?? activeGame.currentQuarter;
+
+  const clearPastTarget = () => setPastQuarterTarget(null);
+
   const logFoul = (
     type: FoulType,
     gameClock: string,
@@ -97,7 +110,7 @@ export function GameScreen() {
     const event: GameEvent = {
       id: newId(),
       kind: 'foul',
-      quarter: activeGame.currentQuarter,
+      quarter: eventQuarter(),
       gameClock,
       wallTimestamp: Date.now(),
       team: foulTarget.side,
@@ -107,13 +120,14 @@ export function GameScreen() {
     };
     dispatch({ type: 'ADD_EVENT', event });
     setFoulTarget(null);
+    clearPastTarget();
   };
 
   const logProtest = (team: Side, reason: string, gameClock: string) => {
     const event: GameEvent = {
       id: newId(),
       kind: 'protest',
-      quarter: activeGame.currentQuarter,
+      quarter: eventQuarter(),
       gameClock,
       wallTimestamp: Date.now(),
       team,
@@ -121,6 +135,7 @@ export function GameScreen() {
     };
     dispatch({ type: 'ADD_EVENT', event });
     setProtestOpen(false);
+    clearPastTarget();
   };
 
   const handleEndGame = (outcome: GameOutcome) => {
@@ -138,7 +153,7 @@ export function GameScreen() {
     const event: GameEvent = {
       id: newId(),
       kind: 'warning',
-      quarter: activeGame.currentQuarter,
+      quarter: eventQuarter(),
       gameClock,
       wallTimestamp: Date.now(),
       target,
@@ -147,6 +162,7 @@ export function GameScreen() {
     };
     dispatch({ type: 'ADD_EVENT', event });
     setWarningType(null);
+    clearPastTarget();
   };
 
   const logPossession = (
@@ -217,7 +233,7 @@ export function GameScreen() {
     const event: GameEvent = {
       id: newId(),
       kind: 'timeout',
-      quarter: activeGame.currentQuarter,
+      quarter: eventQuarter(),
       gameClock,
       wallTimestamp: Date.now(),
       team: timeoutSide,
@@ -226,6 +242,7 @@ export function GameScreen() {
     dispatch({ type: 'ADD_EVENT', event });
     if (forfeited) setActiveTimeout(null);
     setTimeoutSide(null);
+    clearPastTarget();
   };
 
   const cancelTimeoutTimer = () => {
@@ -238,6 +255,24 @@ export function GameScreen() {
       : activeTimeout.team === 'A'
         ? activeGame.teamA
         : activeGame.teamB;
+
+  const handlePastEntryPick = (result: PastEntryResult) => {
+    setPastQuarterOpen(false);
+    setPastQuarterTarget(result.quarter);
+    if (result.kind === 'foul') {
+      setFoulTarget({ side: result.side, subject: result.subject });
+    } else if (result.kind === 'warning') {
+      setWarningType(result.warningType);
+    } else if (result.kind === 'timeout') {
+      // Retroactive — do NOT start the live 1-minute timer.
+      setTimeoutSide(result.side);
+    } else if (result.kind === 'protest') {
+      setProtestOpen(true);
+    }
+  };
+
+  const hasPreviousQuarters =
+    previousQuarters(activeGame.currentQuarter).length > 0;
 
   return (
     <div className="h-full w-full bg-bg text-fg flex flex-col overflow-hidden">
@@ -291,6 +326,18 @@ export function GameScreen() {
         >
           <UserSquare className="w-4 h-4" />
         </Button>
+        {hasPreviousQuarters && (
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setPastQuarterOpen(true)}
+            aria-label="Add to a past quarter"
+            title="Add a missed event to a previous quarter"
+          >
+            <History className="w-4 h-4" />
+            Past Q
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="md"
@@ -411,9 +458,13 @@ export function GameScreen() {
           game={activeGame}
           side={foulTarget.side}
           subject={foulTarget.subject}
-          onClose={() => setFoulTarget(null)}
+          onClose={() => {
+            setFoulTarget(null);
+            clearPastTarget();
+          }}
           onCommit={logFoul}
           onStartTimeout={startTimeout}
+          quarter={pastQuarterTarget ?? undefined}
         />
       )}
       {warningType && (
@@ -421,8 +472,12 @@ export function GameScreen() {
           open={true}
           game={activeGame}
           type={warningType}
-          onClose={() => setWarningType(null)}
+          onClose={() => {
+            setWarningType(null);
+            clearPastTarget();
+          }}
           onCommit={logWarning}
+          quarter={pastQuarterTarget ?? undefined}
         />
       )}
       {possessionOpen && (
@@ -448,9 +503,13 @@ export function GameScreen() {
           open={true}
           game={activeGame}
           side={timeoutSide}
-          onClose={() => setTimeoutSide(null)}
+          onClose={() => {
+            setTimeoutSide(null);
+            clearPastTarget();
+          }}
           onCommit={logTimeout}
           onCancelTimer={cancelTimeoutTimer}
+          quarter={pastQuarterTarget ?? undefined}
         />
       )}
       {playersSide && (
@@ -503,8 +562,20 @@ export function GameScreen() {
         <ProtestModal
           open
           game={activeGame}
-          onClose={() => setProtestOpen(false)}
+          onClose={() => {
+            setProtestOpen(false);
+            clearPastTarget();
+          }}
           onCommit={logProtest}
+          quarter={pastQuarterTarget ?? undefined}
+        />
+      )}
+      {pastQuarterOpen && (
+        <PastQuarterModal
+          open
+          game={activeGame}
+          onClose={() => setPastQuarterOpen(false)}
+          onPick={handlePastEntryPick}
         />
       )}
     </div>

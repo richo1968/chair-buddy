@@ -96,6 +96,22 @@ export function nextQuarter(q: Quarter): Quarter {
   return q;
 }
 
+export function quarterFromOrder(n: number): Quarter {
+  if (n === 1) return 'Q1';
+  if (n === 2) return 'Q2';
+  if (n === 3) return 'Q3';
+  if (n === 4) return 'Q4';
+  return `OT${n - 4}` as Quarter;
+}
+
+/** Quarters strictly before `current`, in chronological order. Q1 returns []. */
+export function previousQuarters(current: Quarter): Quarter[] {
+  const max = quarterOrder(current);
+  const out: Quarter[] = [];
+  for (let n = 1; n < max; n++) out.push(quarterFromOrder(n));
+  return out;
+}
+
 export function clockToSeconds(clock: string): number {
   const m = /^(\d{1,2}):(\d{2})$/.exec(clock);
   if (!m) return 0;
@@ -281,8 +297,12 @@ export interface TimeoutStatus {
   phaseLabel: string;
 }
 
-export function timeoutStatus(game: Game, side: Side): TimeoutStatus {
-  const q = game.currentQuarter;
+export function timeoutStatus(
+  game: Game,
+  side: Side,
+  quarterOverride?: Quarter
+): TimeoutStatus {
+  const q = quarterOverride ?? game.currentQuarter;
   let phaseLabel: string;
   let max: number;
   let used = 0;

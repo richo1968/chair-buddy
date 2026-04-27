@@ -121,13 +121,16 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ADD_EVENT':
       return mapActive(state, g => {
+        const isCurrentQuarter = action.event.quarter === g.currentQuarter;
         const next: Game = {
           ...g,
           events: [...g.events, action.event],
-          lastGameClock: action.event.gameClock,
+          // Retroactive entries (past-quarter additions) must not seed the
+          // live default clock for the next event.
+          lastGameClock: isCurrentQuarter ? action.event.gameClock : g.lastGameClock,
           updatedAt: Date.now()
         };
-        if (action.event.kind === 'possessionChange') {
+        if (action.event.kind === 'possessionChange' && isCurrentQuarter) {
           next.possessionArrow = action.event.newTeam;
           next.arrowDirection = action.event.newArrowDirection;
         }
