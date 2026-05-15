@@ -199,12 +199,10 @@ export function GameScreen() {
     gameClock: string,
     flipArrow: boolean
   ) => {
-    dispatch({
-      type: 'RECORD_QUARTER_SCORE',
-      gameClock,
-      teamAScore: a,
-      teamBScore: b
-    });
+    // Dispatch the halftime-flip event BEFORE RECORD_QUARTER_SCORE: the score
+    // action advances currentQuarter, and ADD_EVENT only applies the arrow
+    // change when event.quarter === g.currentQuarter. Reversing the order
+    // would leave the arrow state untouched.
     if (flipArrow && activeGame.possessionArrow && activeGame.arrowDirection) {
       const flippedDirection: ArrowDirection =
         activeGame.arrowDirection === 'left' ? 'right' : 'left';
@@ -220,6 +218,12 @@ export function GameScreen() {
       };
       dispatch({ type: 'ADD_EVENT', event });
     }
+    dispatch({
+      type: 'RECORD_QUARTER_SCORE',
+      gameClock,
+      teamAScore: a,
+      teamBScore: b
+    });
     setQuarterScoreOpen(false);
   };
 
