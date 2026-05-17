@@ -25,7 +25,12 @@ export function HomeScreen() {
       <div className="max-w-5xl mx-auto">
         <header className="flex items-center justify-between mb-8 gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Chair Buddy</h1>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h1 className="text-3xl font-bold tracking-tight">Chair Buddy</h1>
+              <span className="text-[10px] font-mono text-muted-fg tracking-wider">
+                v{__APP_VERSION__} · {__APP_COMMIT__}
+              </span>
+            </div>
             <div className="text-sm text-muted-fg mt-1">The chair's companion</div>
           </div>
           <div className="flex items-center gap-2">
