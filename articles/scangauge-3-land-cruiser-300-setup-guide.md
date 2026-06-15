@@ -270,7 +270,11 @@ the fuel/economy functions include:
 - **Remaining fuel / range** — estimated from your **tank size minus fuel
   used**; where the 300 reports tank level over OBD2 you can also add a
   **fuel-level %** gauge, but the tank-size/used method is the reliable one
-  on Toyotas that don't expose level cleanly
+  on Toyotas that don't expose level cleanly. **Fitted a long range tank?**
+  Set the tank size to your true capacity (e.g. 167 L with the
+  [Brown Davis 87L tank](brown-davis-87l-long-range-tank-land-cruiser-300-review.md))
+  so the ScanGauge gives an accurate range readout where the factory gauge no
+  longer reads linearly.
 
 Set **Metric** units (Step 1) to get everything in **L/100 km, litres, °C and
 kPa**. Enter your **tank size** and **fuel price** so range and cost maths
