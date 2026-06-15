@@ -165,9 +165,11 @@ A couple of practical notes:
 - Because the unit gets **Wi-Fi firmware updates**, vehicle support and
   auto-detection continue to improve after purchase.
 
-> **Tip for the article's how-to companion piece:** include a short table of
-> the exact X-Gauge gauges 300 owners run (Trans Temp, EGT, DPF), with the
-> confirmed codes/labels, as a separate setup guide that links from here.
+> **Companion setup guide:** for the full how-to — every gauge to run (trans
+> temp, current gear, lockup, EGT, DPF load, intercooler/intake temp,
+> remaining fuel), how to add them with automatic and manual X-Gauge,
+> recommended alarm thresholds, screen layouts and all the trip functions —
+> see the [ScanGauge 3 Setup Guide for the LandCruiser 300 Series](scangauge-3-land-cruiser-300-setup-guide.md).
 
 ## Installation on the 300 Series
 
@@ -298,7 +300,7 @@ hassle-free way to get serious live data on a 300.
 ---
 
 *Have a confirmed X-Gauge setup for your 300 Series? Tell us which gauges and
-codes you run and we'll add them to the companion setup guide.*
+codes you run and we'll add them to the [companion setup guide](scangauge-3-land-cruiser-300-setup-guide.md).*
 
 <!--
 SOURCES / RESEARCH NOTES (remove before publishing):
