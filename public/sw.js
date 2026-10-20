@@ -3,7 +3,7 @@
 // same-origin GET as it goes through. Subsequent visits work offline.
 // For navigations that fail, fall back to the cached index.html (SPA shell).
 
-const CACHE = 'scoretable-chair-v1';
+const CACHE = 'scoretable-chair-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {

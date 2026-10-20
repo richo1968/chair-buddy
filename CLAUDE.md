@@ -51,7 +51,9 @@ If `node_modules` is missing on a fresh machine, run `npm install` — it'll wri
 
 ## Shared database
 
-- The old Supabase project `pkzrkxycvyouxkvjwpju` was gone as of 20 Oct 2026 (DNS NXDOMAIN, so paused past restore or deleted). A new project is required.
+- Project: `jlpcyvayrrxzhwwdldfj` ("chair-buddy", FotoPal org, Pro plan, Sydney), created 20 Oct 2026. It replaced `pkzrkxycvyouxkvjwpju`, which was paused/deleted.
+- Auth: OTP email (8 digits), with custom SMTP via Resend from `no-reply@mail.chairbuddy.com.au` (Resend team jrdigitalservices; the domain was verified via Cloudflare). The "Magic link" and "Confirm sign up" templates both show `{{ .Token }}`.
+- Admins seeded in `members`: jeff@jrdigitalservices.com.au and jeff@jeff.net.au. Add chairs with `insert into members (email) values ('...')`.
 - Schema: `supabase/migrations/20261020000000_shared_schema.sql`, with `members` (allow-list: chair/admin), `games` (shared JSONB + denormalised columns),
   `teams` (shared rosters, unique per name + division) and `team_versions` (auto history of every roster overwrite).
 - Any member can read and write games and teams. Only the creator or an admin can delete a game. Only admins can delete teams.
