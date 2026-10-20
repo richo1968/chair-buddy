@@ -9,6 +9,7 @@ import {
   totalScore
 } from './game';
 import { describeEvent } from './events';
+import { isNative, shareTextFile } from './native';
 
 function pad(value: string | number, width: number): string {
   const s = String(value);
@@ -214,6 +215,12 @@ export function exportGameAsText(game: Game): string {
 }
 
 export function downloadTextFile(filename: string, content: string): void {
+  if (isNative) {
+    shareTextFile(filename, content).catch(err =>
+      console.error('[export] share failed', err)
+    );
+    return;
+  }
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

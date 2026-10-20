@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Moon, Sun, Trash2, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { useAuth } from '@/state/AuthProvider';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { gameOutcomeLabel, isGameFinished, totalScore } from '@/lib/game';
+import { checkMembership } from '@/lib/teamsRepo';
 import type { Game } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +18,21 @@ export function HomeScreen() {
   const [theme, toggleTheme] = useTheme();
   const [pendingDelete, setPendingDelete] = useState<Game | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  // null = unknown / signed out. Signed-in users who aren't on the members
+  // allow-list can't see shared data, so tell them rather than show nothing.
+  const [isMember, setIsMember] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setIsMember(null);
+      return;
+    }
+    let cancelled = false;
+    checkMembership().then(ok => !cancelled && setIsMember(ok));
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const games = [...state.games].sort((a, b) => b.createdAt - a.createdAt);
 
@@ -78,6 +94,14 @@ export function HomeScreen() {
             </button>
           </div>
         </header>
+
+        {user && isMember === false && (
+          <div className="mb-6 rounded-2xl border border-warn bg-surface px-4 py-3 text-sm">
+            <span className="font-semibold">{user.email}</span> isn't approved for
+            the shared Chair Buddy database yet. Games are saved on this iPad only
+            until an admin adds you.
+          </div>
+        )}
 
         <Button
           size="xl"

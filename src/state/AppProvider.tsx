@@ -40,7 +40,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (async () => {
       const local = loadGames();
       if (user) {
-        const merged = await mergeLocalAndCloud(local, user.id);
+        const merged = await mergeLocalAndCloud(local);
         if (cancelled) return;
         // Prime sync bookkeeping so we don't immediately re-upload the same data.
         lastSyncedAt.current = Object.fromEntries(
@@ -75,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const lastTs = lastSyncedAt.current[game.id] ?? 0;
       if (game.updatedAt > lastTs) {
         lastSyncedAt.current[game.id] = game.updatedAt;
-        upsertGameToCloud(game, user.id).catch(err =>
+        upsertGameToCloud(game).catch(err =>
           console.error('[cloud] upsert error', err)
         );
       }

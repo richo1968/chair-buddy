@@ -10,12 +10,15 @@ type LegacyGame = Partial<Game> & { teamA?: LegacyTeam; teamB?: LegacyTeam };
 
 function migrateTeam(t: LegacyTeam | undefined): Team {
   const fallback = '#6b7280';
-  const jersey = t?.jerseyColour ?? t?.colour ?? fallback;
+  const { colour, ...rest } = t ?? {};
+  const jersey = rest.jerseyColour ?? colour ?? fallback;
+  // Spread first so captainId / coach names survive the migration.
   return {
-    name: t?.name ?? '',
+    ...rest,
+    name: rest.name ?? '',
     jerseyColour: jersey,
-    numberColour: t?.numberColour ?? contrastText(jersey),
-    players: t?.players ?? []
+    numberColour: rest.numberColour ?? contrastText(jersey),
+    players: rest.players ?? []
   };
 }
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { ColourSwatchPicker } from '@/components/ColourSwatchPicker';
 import { PlayerEditor } from '@/components/PlayerEditor';
 import { JerseyPreview } from '@/components/JerseyPreview';
+import { TeamSyncBar } from '@/components/TeamSyncBar';
 import { TEAM_SWATCHES, contrastText } from '@/lib/colours';
 import { blankTeam, newGame, todayISO } from '@/lib/game';
 import { cn } from '@/lib/utils';
@@ -130,12 +131,14 @@ export function NewGameScreen() {
             label="Team A"
             hint="Named first — often the home team"
             team={teamA}
+            division={division}
             onChange={setTeamA}
             onPlayersChange={players => setTeamA(t => ({ ...t, players }))}
           />
           <TeamPanel
             label="Team B"
             team={teamB}
+            division={division}
             onChange={setTeamB}
             onPlayersChange={players => setTeamB(t => ({ ...t, players }))}
           />
@@ -217,12 +220,14 @@ function TeamPanel({
   label,
   hint,
   team,
+  division,
   onChange,
   onPlayersChange
 }: {
   label: string;
   hint?: string;
   team: Team;
+  division: string;
   onChange: (updater: (t: Team) => Team) => void;
   onPlayersChange: (players: Player[]) => void;
 }) {
@@ -254,6 +259,12 @@ function TeamPanel({
             className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg"
           />
         </Field>
+
+        <TeamSyncBar
+          team={team}
+          division={division}
+          onLoad={next => onChange(() => next)}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Head coach (optional)">

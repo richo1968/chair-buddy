@@ -26,6 +26,7 @@ import {
 } from '@/lib/game';
 import { describeEvent } from '@/lib/events';
 import { downloadTextFile, exportGameAsText } from '@/lib/export';
+import { printPage } from '@/lib/native';
 import { GamePrintView } from '@/components/game/GamePrintView';
 import { cn } from '@/lib/utils';
 import type { Game, GameEvent, Side, Team } from '@/types';
@@ -66,7 +67,7 @@ export function ReviewScreen() {
             Home
           </Button>
           <div className="flex-1" />
-          <Button variant="secondary" size="md" onClick={() => window.print()}>
+          <Button variant="secondary" size="md" onClick={() => void printPage()}>
             <FileDown className="w-4 h-4" />
             Save PDF
           </Button>

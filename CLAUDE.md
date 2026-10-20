@@ -6,6 +6,8 @@ This file is read automatically by Claude Code at the start of every session. It
 
 ## What this is
 
+> **Direction change (Oct 2026):** Chair Buddy is now primarily a **native iPad app** (Capacitor, `ios/`) with an **Android/Google Play** build (`android/`). The web/PWA deploy is no longer required. Data is a **shared** system — all approved chairs see all games and share team rosters. See "Native apps" and "Shared database" below.
+
 **Chair Buddy** is a touch-first iPad PWA used live by basketball scoretable chairpersons to log game events under FIBA rules. It is **not a scoreboard** — it's an event logger that produces a clean record at the end of the game.
 
 - **User**: Jeff Richardson — Adelaide-based, basketball scoretable chair, technical, prefers milestone-by-milestone collaboration.
@@ -20,7 +22,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 ```bash
 # Local dev
-cd /Users/jeffrichardson/Documents/Claude/chairbuddy
+cd "/Users/jeffrichardson/Documents/Claude/SaaS Sites/chairbuddy"
 npm run dev          # Vite dev server
 
 # Production build
@@ -35,6 +37,27 @@ If `node_modules` is missing on a fresh machine, run `npm install` — it'll wri
 `.env` is in the project root and contains the Supabase publishable key (designed to be public). `.env.example` documents what's required.
 
 ---
+
+## Native apps (Capacitor 8)
+
+- One React codebase; `ios/` and `android/` are thin Capacitor shells that bundle `dist/`.
+- App id: `au.com.chairbuddy.app`. iPad-only (`TARGETED_DEVICE_FAMILY = 2`), landscape-only, status bar hidden.
+- `npm run ios` = build web + `cap sync ios`; `npm run ios:open` opens Xcode. Android: `npx cap sync android`, then build with JDK 21
+  (`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./android/gradlew -p android assembleDebug`).
+- `src/lib/native.ts`: `isNative`, `printPage()` and `shareTextFile()`. `window.print()` and `<a download>` don't work in native web views.
+- Native print plugin `Printer`: iOS `ios/App/App/ChairBuddyViewController.swift` (the storyboard uses this bridge VC subclass);
+  Android `android/app/src/main/java/au/com/chairbuddy/app/PrinterPlugin.java` (registered in `MainActivity`).
+- The service worker is skipped when native.
+
+## Shared database
+
+- The old Supabase project `pkzrkxycvyouxkvjwpju` was gone as of 20 Oct 2026 (DNS NXDOMAIN, so paused past restore or deleted). A new project is required.
+- Schema: `supabase/migrations/20261020000000_shared_schema.sql`, with `members` (allow-list: chair/admin), `games` (shared JSONB + denormalised columns),
+  `teams` (shared rosters, unique per name + division) and `team_versions` (auto history of every roster overwrite).
+- Any member can read and write games and teams. Only the creator or an admin can delete a game. Only admins can delete teams.
+- `src/lib/teamsRepo.ts` + `src/components/TeamSyncBar.tsx`: "Load from database" / "Save to database" on New Game setup and in Manage Players.
+  Loading merges **by player number** so mid-game player ids (and their fouls) are preserved.
+- Games: `cloudStorage.ts` loads the 300 most recently updated shared games; localStorage remains the offline cache.
 
 ## Stack
 

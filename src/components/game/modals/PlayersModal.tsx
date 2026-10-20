@@ -1,7 +1,8 @@
-import type { Game, Side } from '@/types';
+import type { Game, Player, Side } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { PlayerEditor } from '@/components/PlayerEditor';
+import { TeamSyncBar } from '@/components/TeamSyncBar';
 import { useApp } from '@/state/AppProvider';
 
 interface Props {
@@ -15,6 +16,35 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
   const { dispatch } = useApp();
   const team = side === 'A' ? game.teamA : game.teamB;
 
+  // Diff the edited roster into per-player actions so player ids (which
+  // fouls reference) are preserved.
+  const applyPlayers = (next: Player[]) => {
+    const prev = team.players;
+    const prevIds = new Set(prev.map(p => p.id));
+    const nextIds = new Set(next.map(p => p.id));
+
+    for (const id of prevIds) {
+      if (!nextIds.has(id)) {
+        dispatch({ type: 'DELETE_PLAYER', side, playerId: id });
+      }
+    }
+    for (const p of next) {
+      if (!prevIds.has(p.id)) {
+        dispatch({ type: 'ADD_PLAYER', side, player: p });
+      } else {
+        const before = prev.find(x => x.id === p.id);
+        if (before && (before.number !== p.number || before.name !== p.name)) {
+          dispatch({
+            type: 'UPDATE_PLAYER',
+            side,
+            playerId: p.id,
+            patch: { number: p.number, name: p.name }
+          });
+        }
+      }
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -25,6 +55,24 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
       footer={<Button onClick={onClose}>Done</Button>}
     >
       <div className="space-y-5">
+      <TeamSyncBar
+        team={team}
+        division={game.division}
+        onLoad={next => {
+          dispatch({
+            type: 'UPDATE_TEAM',
+            side,
+            patch: {
+              coachName: next.coachName,
+              assistantCoachName: next.assistantCoachName
+            }
+          });
+          applyPlayers(next.players);
+          if (next.captainId !== team.captainId) {
+            dispatch({ type: 'SET_CAPTAIN', side, playerId: next.captainId });
+          }
+        }}
+      />
       {/* Coaching staff — editable mid-game from the same modal that opens
           via 'Manage players'. The team-header pencil button still opens
           the colours/details modal which also has these fields, but having
@@ -78,35 +126,7 @@ export function PlayersModal({ open, game, side, onClose }: Props) {
         onCaptainChange={id =>
           dispatch({ type: 'SET_CAPTAIN', side, playerId: id })
         }
-        onChange={next => {
-          const prev = team.players;
-          const prevIds = new Set(prev.map(p => p.id));
-          const nextIds = new Set(next.map(p => p.id));
-
-          for (const id of prevIds) {
-            if (!nextIds.has(id)) {
-              dispatch({ type: 'DELETE_PLAYER', side, playerId: id });
-            }
-          }
-          for (const p of next) {
-            if (!prevIds.has(p.id)) {
-              dispatch({ type: 'ADD_PLAYER', side, player: p });
-            } else {
-              const before = prev.find(x => x.id === p.id);
-              if (
-                before &&
-                (before.number !== p.number || before.name !== p.name)
-              ) {
-                dispatch({
-                  type: 'UPDATE_PLAYER',
-                  side,
-                  playerId: p.id,
-                  patch: { number: p.number, name: p.name }
-                });
-              }
-            }
-          }
-        }}
+        onChange={applyPlayers}
       />
       </div>
     </Modal>

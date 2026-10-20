@@ -4,18 +4,24 @@ import type { Game } from '@/types';
 
 interface GameRow {
   id: string;
-  user_id: string;
   data: Game;
   updated_at: string;
 }
 
-export async function loadGamesFromCloud(userId: string): Promise<Game[]> {
+/** How many of the most recently updated shared games to keep on the device. */
+const CLOUD_GAME_LIMIT = 300;
+
+/**
+ * Games are shared across all approved chairs (see supabase/migrations) —
+ * this loads everyone's games, not just the signed-in user's.
+ */
+export async function loadGamesFromCloud(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('games')
     .select('id,data,updated_at')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .limit(CLOUD_GAME_LIMIT);
   if (error) {
     console.error('[cloud] load failed', error);
     return [];
@@ -26,15 +32,12 @@ export async function loadGamesFromCloud(userId: string): Promise<Game[]> {
   return (data as unknown as GameRow[]).map(row => migrateGame(row.data));
 }
 
-export async function upsertGameToCloud(
-  game: Game,
-  userId: string
-): Promise<void> {
+export async function upsertGameToCloud(game: Game): Promise<void> {
   if (!supabase) return;
+  // created_by / updated_by and the listing columns are filled by triggers.
   const { error } = await supabase.from('games').upsert(
     {
       id: game.id,
-      user_id: userId,
       data: game,
       updated_at: new Date(game.updatedAt).toISOString()
     },
@@ -55,18 +58,15 @@ export async function deleteGameFromCloud(id: string): Promise<void> {
  *  - Push local games that are newer (or don't exist remotely) to cloud.
  * Returns the merged canonical list.
  */
-export async function mergeLocalAndCloud(
-  localGames: Game[],
-  userId: string
-): Promise<Game[]> {
+export async function mergeLocalAndCloud(localGames: Game[]): Promise<Game[]> {
   if (!supabase) return localGames;
-  const cloud = await loadGamesFromCloud(userId);
+  const cloud = await loadGamesFromCloud();
   const byId = new Map<string, Game>();
   for (const g of cloud) byId.set(g.id, g);
   for (const local of localGames) {
     const remote = byId.get(local.id);
     if (!remote || local.updatedAt > remote.updatedAt) {
-      await upsertGameToCloud(local, userId);
+      await upsertGameToCloud(local);
       byId.set(local.id, local);
     }
   }
