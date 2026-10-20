@@ -36,20 +36,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+    // Never let auth block the app: games are loaded only once auth settles,
+    // and getSession can stall for a long time refreshing a token when the
+    // network is poor (e.g. a stadium). Fall back to local-only after 4s;
+    // onAuthStateChange still picks the session up when it arrives.
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      setLoading(false);
+    };
+    const timer = setTimeout(settle, 4000);
     supabase.auth
       .getSession()
       .then(({ data }) => {
         setSession(data.session);
-        setLoading(false);
+        settle();
       })
-      .catch(() => setLoading(false));
+      .catch(settle);
 
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = useCallback(async (email: string) => {
