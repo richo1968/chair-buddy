@@ -36,3 +36,6 @@ dev-dist/
 
 # Claude Code local settings
 .claude/
+
+# Store signing keys and API credentials — never commit
+.release/

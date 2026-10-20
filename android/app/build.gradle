@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Release signing reads the git-ignored upload key from .release/google-play
+// (override with CHAIRBUDDY_UPLOAD_PROPERTIES). Debug builds don't need it.
+def uploadPropsFile = file(System.getenv("CHAIRBUDDY_UPLOAD_PROPERTIES") ?: "../../.release/google-play/upload-keystore.properties")
+def uploadProps = new Properties()
+if (uploadPropsFile.exists()) {
+    uploadPropsFile.withInputStream { uploadProps.load(it) }
+}
+
 android {
     namespace = "au.com.chairbuddy.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +24,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (uploadPropsFile.exists()) {
+                storeFile file(uploadProps['storeFile'])
+                storePassword uploadProps['storePassword']
+                keyAlias uploadProps['keyAlias']
+                keyPassword uploadProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
