@@ -22,7 +22,7 @@ This file is read automatically by Claude Code at the start of every session. It
 
 ```bash
 # Local dev
-cd "/Users/jeffrichardson/Documents/Claude/SaaS Sites/chairbuddy"
+cd ~/dev/chairbuddy
 npm run dev          # Vite dev server
 
 # Production build
@@ -77,7 +77,7 @@ If `node_modules` is missing on a fresh machine, run `npm install` — it'll wri
 ## Folder layout
 
 ```
-/Users/jeffrichardson/Documents/Claude/chairbuddy   ← project root (in iCloud)
+~/dev/chairbuddy   ← project root (NOT in iCloud; see below)
 ├── src/
 │   ├── components/
 │   │   ├── auth/            LoginModal (OTP)
@@ -265,7 +265,8 @@ A condensed log of decisions in case the rationale is needed:
 - **Cloudflare deploy** picks up `wrangler.toml` changes on every push. To add another route or env, edit `wrangler.toml` and push.
 - **Migration tests**: `migrateGame` must handle ALL legacy shapes — when adding a new field to `Game`, write a migration path in `migrateEvent` / `migrateGame` and verify cloud-loaded older games still render.
 - **iCloud + git**: occasionally iCloud touches `.git` mtimes. If git status acts weird, it's not a code bug. Worst case: `mv .git .git.nosync && ln -s .git.nosync .git`.
-- **node_modules.nosync**: when running `npm install`, it writes into `node_modules.nosync` via the symlink. iCloud ignores `.nosync`. If the symlink ever breaks, recreate: `mv node_modules node_modules.nosync && ln -s node_modules.nosync node_modules`.
+- **Project lives in `~/dev/chairbuddy`, outside iCloud** (moved 20 Oct 2026). In iCloud Drive, iCloud kept creating conflict copies ("splash 2.png", "config 2.xml") during builds, which broke Android resource merging and leaked into git. Don't move it back. `.gitignore` ignores `* [0-9].*` as a guard. The old folder is `~/Documents/Claude/SaaS Sites/chairbuddy (moved to ~-dev-chairbuddy)`.
+- **node_modules.nosync** (historical): when running `npm install`, it writes into `node_modules.nosync` via the symlink. iCloud ignores `.nosync`. If the symlink ever breaks, recreate: `mv node_modules node_modules.nosync && ln -s node_modules.nosync node_modules`.
 - **Active Claude session vs. moved folder**: this conversation started before the iCloud move, so the harness keeps writing this transcript to the OLD memory path key. After this session ends, run the cleanup commands at the bottom of the previous chat (delete the old stub and the old empty memory folder).
 - **`.claude/settings.local.json`** is NOT in git (`.gitignore` excludes it) — keeps allowed commands per-machine.
 
