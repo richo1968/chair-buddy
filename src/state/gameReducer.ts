@@ -17,6 +17,14 @@ export type Action =
   | { type: 'LOAD'; games: Game[] }
   | { type: 'NEW_GAME' }
   | { type: 'CREATE_GAME'; game: Game }
+  /** Save a set-up game without starting it (new or edited). */
+  | { type: 'SAVE_GAME'; game: Game }
+  /** Start a set-up game (new or previously saved) and open it. */
+  | { type: 'START_GAME'; game: Game }
+  /** Reopen the setup screen for a saved, not-yet-started game. */
+  | { type: 'EDIT_GAME_SETUP'; id: string }
+  | { type: 'ARCHIVE_GAME'; id: string }
+  | { type: 'RESTORE_GAME'; id: string }
   | { type: 'OPEN_GAME'; id: string }
   | { type: 'OPEN_REVIEW'; id: string }
   | { type: 'GO_HOME' }
@@ -98,6 +106,38 @@ export function reducer(state: AppState, action: Action): AppState {
         games: [action.game, ...state.games],
         view: 'game',
         activeGameId: action.game.id
+      };
+
+    case 'SAVE_GAME':
+    case 'START_GAME': {
+      const start = action.type === 'START_GAME';
+      const game = touch({ ...action.game, scheduled: !start });
+      const exists = state.games.some(g => g.id === game.id);
+      return {
+        ...state,
+        games: exists
+          ? state.games.map(g => (g.id === game.id ? game : g))
+          : [game, ...state.games],
+        view: start ? 'game' : 'home',
+        activeGameId: start ? game.id : null
+      };
+    }
+
+    case 'EDIT_GAME_SETUP':
+      return { ...state, view: 'setup', activeGameId: action.id };
+
+    case 'ARCHIVE_GAME':
+    case 'RESTORE_GAME':
+      return {
+        ...state,
+        games: state.games.map(g =>
+          g.id === action.id
+            ? touch({
+                ...g,
+                archivedAt: action.type === 'ARCHIVE_GAME' ? Date.now() : undefined
+              })
+            : g
+        )
       };
 
     case 'OPEN_GAME':

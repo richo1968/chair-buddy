@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Play, ArrowLeftRight, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Play, ArrowLeftRight, ChevronDown, Save } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { Button } from '@/components/ui/Button';
 import { ColourSwatchPicker } from '@/components/ColourSwatchPicker';
@@ -12,27 +12,28 @@ import { useAuth } from '@/state/AuthProvider';
 import { TEAM_SWATCHES, contrastText } from '@/lib/colours';
 import { blankTeam, newGame, todayISO } from '@/lib/game';
 import { cn } from '@/lib/utils';
-import type { BenchLayout, Officials, Player, Team } from '@/types';
+import type { BenchLayout, Game, Officials, Player, Team } from '@/types';
 
 export function NewGameScreen() {
-  const { dispatch } = useApp();
+  const { dispatch, activeGame } = useApp();
   const { user } = useAuth();
+  // A saved (not yet started) game reopened for editing; null for a new game.
+  const editing = activeGame?.scheduled ? activeGame : null;
 
-  const [date, setDate] = useState(todayISO());
-  const [division, setDivision] = useState('');
-  const [competition, setCompetition] = useState('');
-  const [venue, setVenue] = useState('');
-  const [tipTime, setTipTime] = useState('');
-  const [teamA, setTeamA] = useState(() => blankTeam(TEAM_SWATCHES[0]));
-  const [teamB, setTeamB] = useState(() => blankTeam(TEAM_SWATCHES[6]));
-  const [layout, setLayout] = useState<BenchLayout>('A-left');
-  const [officials, setOfficials] = useState<Officials>({});
+  const [date, setDate] = useState(editing?.date ?? todayISO());
+  const [division, setDivision] = useState(editing?.division ?? '');
+  const [competition, setCompetition] = useState(editing?.competition ?? '');
+  const [venue, setVenue] = useState(editing?.venue ?? '');
+  const [tipTime, setTipTime] = useState(editing?.tipTime ?? '');
+  const [teamA, setTeamA] = useState(() => editing?.teamA ?? blankTeam(TEAM_SWATCHES[0]));
+  const [teamB, setTeamB] = useState(() => editing?.teamB ?? blankTeam(TEAM_SWATCHES[6]));
+  const [layout, setLayout] = useState<BenchLayout>(editing?.layout ?? 'A-left');
+  const [officials, setOfficials] = useState<Officials>(editing?.officials ?? {});
   const [officialsOpen, setOfficialsOpen] = useState(false);
 
   const canStart = teamA.name.trim() && teamB.name.trim();
 
-  const start = () => {
-    if (!canStart) return;
+  const build = () => {
     const cleanOfficials: Officials = Object.fromEntries(
       Object.entries(officials).filter(([, v]) => v && v.trim())
     );
@@ -47,15 +48,35 @@ export function NewGameScreen() {
     if (venue.trim()) game.venue = venue.trim();
     if (tipTime.trim()) game.tipTime = tipTime.trim();
     if (Object.keys(cleanOfficials).length > 0) game.officials = cleanOfficials;
-    dispatch({ type: 'CREATE_GAME', game });
-    // Add any new clubs to the shared list so other chairs can pick them.
-    // Existing clubs keep their colours; fire-and-forget so starting a game
-    // never waits on the network.
-    if (user) {
-      for (const t of [game.teamA, game.teamB]) {
-        ensureClub(t).catch(err => console.error('[clubs] ensure failed', err));
-      }
+    if (editing) {
+      game.id = editing.id;
+      game.createdAt = editing.createdAt;
     }
+    return game;
+  };
+
+  // Add any new clubs to the shared list so other chairs can pick them.
+  // Existing clubs keep their colours; fire-and-forget so saving or starting
+  // a game never waits on the network.
+  const shareClubs = (game: Game) => {
+    if (!user) return;
+    for (const t of [game.teamA, game.teamB]) {
+      ensureClub(t).catch(err => console.error('[clubs] ensure failed', err));
+    }
+  };
+
+  const save = () => {
+    if (!canStart) return;
+    const game = build();
+    dispatch({ type: 'SAVE_GAME', game });
+    shareClubs(game);
+  };
+
+  const start = () => {
+    if (!canStart) return;
+    const game = build();
+    dispatch({ type: 'START_GAME', game });
+    shareClubs(game);
   };
 
   const leftIsA = layout === 'A-left';
@@ -77,12 +98,20 @@ export function NewGameScreen() {
               <ArrowLeft className="w-4 h-4" />
               Cancel
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">New game</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {editing ? 'Saved game' : 'New game'}
+            </h1>
           </div>
-          <Button size="lg" onClick={start} disabled={!canStart}>
-            <Play className="w-5 h-5" />
-            Start Game
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="lg" onClick={save} disabled={!canStart}>
+              <Save className="w-5 h-5" />
+              Save
+            </Button>
+            <Button size="lg" onClick={start} disabled={!canStart}>
+              <Play className="w-5 h-5" />
+              Start Game
+            </Button>
+          </div>
         </header>
 
         <section className="rounded-3xl border border-border bg-surface p-5 space-y-4">
@@ -208,7 +237,11 @@ export function NewGameScreen() {
           )}
         </section>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" size="xl" onClick={save} disabled={!canStart}>
+            <Save className="w-6 h-6" />
+            Save for later
+          </Button>
           <Button size="xl" onClick={start} disabled={!canStart}>
             <Play className="w-6 h-6" />
             Start Game

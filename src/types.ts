@@ -153,6 +153,10 @@ export interface Game {
   /** @deprecated kept for backward compat with older saves; derive from outcome.kind !== 'live'. */
   finished: boolean;
   lastGameClock: string;
+  /** Set up in advance with Save, not started yet. Cleared on Start Game. */
+  scheduled?: boolean;
+  /** When the game was archived (hidden from the main list; restorable). */
+  archivedAt?: number;
   events: GameEvent[];
   quarterScores: QuarterScore[];
   createdAt: number;

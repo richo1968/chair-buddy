@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Moon, Sun, Trash2, Cloud, CloudOff, LogIn, LogOut } from 'lucide-react';
+import { Plus, Moon, Sun, Trash2, Cloud, CloudOff, LogIn, LogOut, Archive, ArchiveRestore, ArrowLeft, CalendarClock } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
 import { useAuth } from '@/state/AuthProvider';
 import { useTheme } from '@/hooks/useTheme';
@@ -34,7 +34,26 @@ export function HomeScreen() {
     };
   }, [user?.id]);
 
-  const games = [...state.games].sort((a, b) => b.createdAt - a.createdAt);
+  const [showArchive, setShowArchive] = useState(false);
+
+  const active = state.games.filter(g => !g.archivedAt);
+  const upcoming = active
+    .filter(g => g.scheduled)
+    .sort((a, b) => `${a.date} ${a.tipTime ?? ''}`.localeCompare(`${b.date} ${b.tipTime ?? ''}`));
+  const games = active.filter(g => !g.scheduled).sort((a, b) => b.createdAt - a.createdAt);
+  const archived = state.games
+    .filter(g => g.archivedAt)
+    .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
+
+  const open = (g: Game) =>
+    dispatch(
+      g.scheduled
+        ? { type: 'EDIT_GAME_SETUP', id: g.id }
+        : isGameFinished(g)
+          ? { type: 'OPEN_REVIEW', id: g.id }
+          : { type: 'OPEN_GAME', id: g.id }
+    );
+  const archive = (g: Game) => dispatch({ type: 'ARCHIVE_GAME', id: g.id });
 
   return (
     <div className="min-h-full w-full bg-bg text-fg px-6 pb-6 pt-safe-6 overflow-auto">
@@ -103,59 +122,132 @@ export function HomeScreen() {
           </div>
         )}
 
-        <Button
-          size="xl"
-          className="w-full mb-8"
-          onClick={() => dispatch({ type: 'NEW_GAME' })}
-        >
-          <Plus className="w-6 h-6" />
-          New Game
-        </Button>
-
-        <div>
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-lg font-semibold">Past games</h2>
-            <div className="text-xs text-muted-fg">
-              Long-press a row to delete
+        {showArchive ? (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <Button variant="ghost" size="md" onClick={() => setShowArchive(false)}>
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+              <h2 className="text-lg font-semibold">Archive</h2>
             </div>
+            {archived.length === 0 ? (
+              <div className="rounded-2xl border border-border bg-surface p-8 text-center text-muted-fg">
+                Nothing archived.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {archived.map(g => (
+                  <GameRow
+                    key={g.id}
+                    game={g}
+                    onOpen={() => open(g)}
+                    actions={
+                      <>
+                        <RowAction
+                          label="Restore game"
+                          onClick={() => dispatch({ type: 'RESTORE_GAME', id: g.id })}
+                        >
+                          <ArchiveRestore className="w-4 h-4" />
+                        </RowAction>
+                        <RowAction label="Delete permanently" danger onClick={() => setPendingDelete(g)}>
+                          <Trash2 className="w-4 h-4" />
+                        </RowAction>
+                      </>
+                    }
+                  />
+                ))}
+              </ul>
+            )}
           </div>
+        ) : (
+          <>
+            <Button
+              size="xl"
+              className="w-full mb-8"
+              onClick={() => dispatch({ type: 'NEW_GAME' })}
+            >
+              <Plus className="w-6 h-6" />
+              New Game
+            </Button>
 
-          {games.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-surface p-8 text-center text-muted-fg">
-              No games yet. Tap "New Game" to start.
+            {upcoming.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <CalendarClock className="w-5 h-5" />
+                  Upcoming
+                </h2>
+                <ul className="space-y-2">
+                  {upcoming.map(g => (
+                    <GameRow
+                      key={g.id}
+                      game={g}
+                      onOpen={() => open(g)}
+                      onLongPress={() => archive(g)}
+                      actions={
+                        <RowAction label="Archive game" onClick={() => archive(g)}>
+                          <Archive className="w-4 h-4" />
+                        </RowAction>
+                      }
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-lg font-semibold">Past games</h2>
+                <div className="text-xs text-muted-fg">Long-press a row to archive</div>
+              </div>
+
+              {games.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-surface p-8 text-center text-muted-fg">
+                  No games yet. Tap "New Game" to start.
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {games.map(g => (
+                    <GameRow
+                      key={g.id}
+                      game={g}
+                      onOpen={() => open(g)}
+                      onLongPress={() => archive(g)}
+                      actions={
+                        <RowAction label="Archive game" onClick={() => archive(g)}>
+                          <Archive className="w-4 h-4" />
+                        </RowAction>
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
             </div>
-          ) : (
-            <ul className="space-y-2">
-              {games.map(g => (
-                <GameRow
-                  key={g.id}
-                  game={g}
-                  onOpen={() =>
-                    dispatch(
-                      isGameFinished(g)
-                        ? { type: 'OPEN_REVIEW', id: g.id }
-                        : { type: 'OPEN_GAME', id: g.id }
-                    )
-                  }
-                  onDeleteRequest={() => setPendingDelete(g)}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
+
+            <Button
+              variant="ghost"
+              size="md"
+              className="mt-6"
+              onClick={() => setShowArchive(true)}
+            >
+              <Archive className="w-4 h-4" />
+              Archive ({archived.length})
+            </Button>
+          </>
+        )}
       </div>
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       <ConfirmDialog
         open={!!pendingDelete}
-        title="Delete game?"
+        title="Delete permanently?"
         message={
           pendingDelete
-            ? `${pendingDelete.date} · ${pendingDelete.teamA.name || 'Team A'} vs ${pendingDelete.teamB.name || 'Team B'}. This cannot be undone.`
+            ? `${pendingDelete.date} · ${pendingDelete.teamA.name || 'Team A'} vs ${pendingDelete.teamB.name || 'Team B'}. This removes it for every chair and cannot be undone.`
             : ''
         }
-        confirmLabel="Delete"
+        confirmLabel="Delete permanently"
         danger
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
@@ -170,13 +262,15 @@ export function HomeScreen() {
 function GameRow({
   game,
   onOpen,
-  onDeleteRequest
+  onLongPress,
+  actions
 }: {
   game: Game;
   onOpen: () => void;
-  onDeleteRequest: () => void;
+  onLongPress?: () => void;
+  actions: React.ReactNode;
 }) {
-  const lp = useLongPress(onDeleteRequest);
+  const lp = useLongPress(onLongPress ?? (() => undefined));
   const scoreA = totalScore(game, 'A');
   const scoreB = totalScore(game, 'B');
 
@@ -214,7 +308,9 @@ function GameRow({
             <span
               className={cn(
                 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border',
-                isGameFinished(game)
+                game.scheduled
+                  ? 'bg-accent/15 text-accent border-accent/50'
+                  : isGameFinished(game)
                   ? game.outcome.kind === 'forfeit' || game.outcome.kind === 'default'
                     ? 'bg-danger/15 text-danger border-danger/50'
                     : 'bg-muted text-muted-fg border-border'
@@ -233,19 +329,39 @@ function GameRow({
         <div className="text-right font-mono tabular-nums text-xl">
           {scoreA} - {scoreB}
         </div>
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation();
-            onDeleteRequest();
-          }}
-          aria-label="Delete game"
-          className="h-11 w-11 rounded-xl border border-border bg-muted flex items-center justify-center active:bg-danger active:text-white transition-none"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+          {actions}
+        </div>
       </div>
     </li>
+  );
+}
+
+function RowAction({
+  label,
+  danger,
+  onClick,
+  children
+}: {
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onPointerDown={e => e.stopPropagation()}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'h-11 w-11 rounded-xl border border-border bg-muted flex items-center justify-center transition-none',
+        danger ? 'active:bg-danger active:text-white' : 'active:bg-surface-hi'
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

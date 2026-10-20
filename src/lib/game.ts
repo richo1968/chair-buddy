@@ -59,6 +59,7 @@ export function isGameFinished(game: Game): boolean {
 }
 
 export function gameOutcomeLabel(game: Game): string {
+  if (game.scheduled) return 'Saved';
   switch (game.outcome.kind) {
     case 'live':
       return 'Live';
