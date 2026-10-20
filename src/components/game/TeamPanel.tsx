@@ -80,6 +80,13 @@ export function TeamPanel({
         style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
         title="Edit team name, jersey colour, and coach names"
       >
+        {team.logoUrl && (
+          <img
+            src={team.logoUrl}
+            alt=""
+            className="w-10 h-10 rounded-xl object-contain bg-white shrink-0"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-[10px] uppercase tracking-widest opacity-70">
             Team {side}

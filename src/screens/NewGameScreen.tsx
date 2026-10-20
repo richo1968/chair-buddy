@@ -6,6 +6,9 @@ import { ColourSwatchPicker } from '@/components/ColourSwatchPicker';
 import { PlayerEditor } from '@/components/PlayerEditor';
 import { JerseyPreview } from '@/components/JerseyPreview';
 import { TeamSyncBar } from '@/components/TeamSyncBar';
+import { ClubField } from '@/components/ClubField';
+import { ensureClub } from '@/lib/clubsRepo';
+import { useAuth } from '@/state/AuthProvider';
 import { TEAM_SWATCHES, contrastText } from '@/lib/colours';
 import { blankTeam, newGame, todayISO } from '@/lib/game';
 import { cn } from '@/lib/utils';
@@ -13,6 +16,7 @@ import type { BenchLayout, Officials, Player, Team } from '@/types';
 
 export function NewGameScreen() {
   const { dispatch } = useApp();
+  const { user } = useAuth();
 
   const [date, setDate] = useState(todayISO());
   const [division, setDivision] = useState('');
@@ -44,6 +48,14 @@ export function NewGameScreen() {
     if (tipTime.trim()) game.tipTime = tipTime.trim();
     if (Object.keys(cleanOfficials).length > 0) game.officials = cleanOfficials;
     dispatch({ type: 'CREATE_GAME', game });
+    // Add any new clubs to the shared list so other chairs can pick them.
+    // Existing clubs keep their colours; fire-and-forget so starting a game
+    // never waits on the network.
+    if (user) {
+      for (const t of [game.teamA, game.teamB]) {
+        ensureClub(t).catch(err => console.error('[clubs] ensure failed', err));
+      }
+    }
   };
 
   const leftIsA = layout === 'A-left';
@@ -250,13 +262,11 @@ function TeamPanel({
       <div className="p-5 space-y-5">
         {hint && <div className="text-xs text-muted-fg -mt-1">{hint}</div>}
 
-        <Field label="Team name">
-          <input
-            type="text"
-            value={team.name}
-            onChange={e => onChange(t => ({ ...t, name: e.target.value }))}
-            placeholder="e.g. Eagles"
-            className="h-14 w-full rounded-2xl bg-surface-hi border border-border px-4 text-lg"
+        <Field label="Club / team name">
+          <ClubField
+            team={team}
+            division={division}
+            onChange={next => onChange(() => next)}
           />
         </Field>
 

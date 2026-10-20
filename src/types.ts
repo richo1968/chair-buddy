@@ -19,6 +19,10 @@ export interface Team {
   coachName?: string;
   /** Assistant coach name. */
   assistantCoachName?: string;
+  /** Shared-database club this team belongs to, if picked from the club list. */
+  clubId?: string;
+  /** Public URL of the club logo. */
+  logoUrl?: string;
 }
 
 export type BenchLayout = 'A-left' | 'A-right';

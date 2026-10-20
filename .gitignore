@@ -39,3 +39,6 @@ dev-dist/
 
 # Store signing keys and API credentials — never commit
 .release/
+
+# iCloud conflict copies ("file 2.png") — never real files
+* [0-9].*

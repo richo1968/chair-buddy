@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { newId } from './game';
+import { saveClubColours } from './clubsRepo';
 import type { Player, Team } from '@/types';
 
 /** A team roster as stored in the shared `teams` table. */
@@ -7,6 +8,7 @@ export interface SharedTeam {
   id: string;
   name: string;
   division: string;
+  clubId?: string;
   jerseyColour?: string;
   numberColour?: string;
   coachName?: string;
@@ -21,6 +23,7 @@ interface TeamRow {
   id: string;
   name: string;
   division: string;
+  club_id: string | null;
   jersey_colour: string | null;
   number_colour: string | null;
   coach_name: string | null;
@@ -32,13 +35,14 @@ interface TeamRow {
 }
 
 const COLUMNS =
-  'id,name,division,jersey_colour,number_colour,coach_name,assistant_coach_name,captain_number,players,updated_at,updated_by_email';
+  'id,name,division,club_id,jersey_colour,number_colour,coach_name,assistant_coach_name,captain_number,players,updated_at,updated_by_email';
 
 function fromRow(r: TeamRow): SharedTeam {
   return {
     id: r.id,
     name: r.name,
     division: r.division,
+    clubId: r.club_id ?? undefined,
     jerseyColour: r.jersey_colour ?? undefined,
     numberColour: r.number_colour ?? undefined,
     coachName: r.coach_name ?? undefined,
@@ -69,6 +73,9 @@ export async function searchTeams(query: string): Promise<SharedTeam[]> {
  * Overwrites the previous roster (the old one is kept in `team_versions`).
  */
 export async function saveTeam(team: Team, division: string): Promise<SharedTeam> {
+  // Saving a roster also saves the club's colours — this is the explicit
+  // "these are the club's colours" action.
+  const club = await saveClubColours(team);
   const captain = team.players.find(p => p.id === team.captainId);
   const { data, error } = await supabase
     .from('teams')
@@ -76,6 +83,7 @@ export async function saveTeam(team: Team, division: string): Promise<SharedTeam
       {
         name: team.name.trim(),
         division: division.trim(),
+        club_id: club.id,
         jersey_colour: team.jerseyColour,
         number_colour: team.numberColour,
         coach_name: team.coachName?.trim() || null,
@@ -92,6 +100,23 @@ export async function saveTeam(team: Team, division: string): Promise<SharedTeam
     .single();
   if (error) throw new Error(error.message);
   return fromRow(data as unknown as TeamRow);
+}
+
+/** Saved rosters for a club (matched by name), the given division first. */
+export async function rostersForClub(name: string, division: string): Promise<SharedTeam[]> {
+  if (!name.trim()) return [];
+  const { data, error } = await supabase
+    .from('teams')
+    .select(COLUMNS)
+    .eq('name_key', name.trim().toLowerCase())
+    .order('updated_at', { ascending: false })
+    .limit(10);
+  if (error) throw new Error(error.message);
+  const div = division.trim().toLowerCase();
+  return (data as unknown as TeamRow[])
+    .map(fromRow)
+    .filter(t => t.players.length > 0)
+    .sort((a, b) => Number(b.division.toLowerCase() === div) - Number(a.division.toLowerCase() === div));
 }
 
 /**
@@ -127,6 +152,7 @@ export function applySharedTeam(team: Team, shared: SharedTeam): Team {
   return {
     ...team,
     name: team.name.trim() ? team.name : shared.name,
+    clubId: team.clubId ?? shared.clubId,
     jerseyColour: shared.jerseyColour ?? team.jerseyColour,
     numberColour: shared.numberColour ?? team.numberColour,
     coachName: shared.coachName ?? team.coachName,
