@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 // access via row-level security on the database side, not via key secrecy.
 // Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env (or a platform env
 // var) to override these defaults.
-const DEFAULT_URL = 'https://pkzrkxycvyouxkvjwpju.supabase.co';
-const DEFAULT_KEY = 'sb_publishable_CiGEFyHbfzwwWvAicWIUhA_A7m9lG5d';
+const DEFAULT_URL = 'https://jlpcyvayrrxzhwwdldfj.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_kyKcPCVwuRkAkckJqqpF_A_ywC8mZ_7';
 
 const url =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? DEFAULT_URL;
