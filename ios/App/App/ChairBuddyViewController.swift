@@ -87,6 +87,10 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
     /// Bumped each time a recognition task is replaced, so callbacks from a
     /// finished task can't emit or restart anything.
     private var generation = 0
+    /// Apple's server recogniser is noticeably more accurate (especially over
+    /// AirPods); fall back to on-device for the rest of the session if it errors
+    /// (e.g. no internet at the stadium).
+    private var forceOnDevice = false
 
     @objc func requestAccess(_ call: CAPPluginCall) {
         SFSpeechRecognizer.requestAuthorization { status in
@@ -155,7 +159,7 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
         req.shouldReportPartialResults = true
         req.contextualStrings = hints
         req.taskHint = .dictation
-        if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true }
+        req.requiresOnDeviceRecognition = forceOnDevice && recognizer.supportsOnDeviceRecognition
         if #available(iOS 16.0, *) { req.addsPunctuation = false }
         request = req
         lastText = ""
@@ -170,7 +174,12 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
                         self.schedulePause()
                     }
                     if result.isFinal { self.flush(); self.restart() }
-                } else if error != nil {
+                } else if let error = error as NSError? {
+                    let text = "\(error.domain) \(error.localizedDescription)".lowercased()
+                    let offline = error.domain == NSURLErrorDomain || text.contains("network") || text.contains("connection") || text.contains("internet")
+                    if offline, !self.forceOnDevice, self.recognizer?.supportsOnDeviceRecognition == true {
+                        self.forceOnDevice = true
+                    }
                     self.flush()
                     self.restart()
                 }
@@ -178,10 +187,10 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// A phrase ends after ~1.2 s of no new words.
+    /// A phrase ends after ~1.6 s of no new words (long enough for "foul red 6 … two shots").
     private func schedulePause() {
         pauseTimer?.invalidate()
-        pauseTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: false) { [weak self] _ in
+        pauseTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: false) { [weak self] _ in
             guard let self = self, self.listening else { return }
             self.flush()
             self.restart()

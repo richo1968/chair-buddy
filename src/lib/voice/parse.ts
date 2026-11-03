@@ -23,7 +23,7 @@ export type VoiceAction =
       /** Team wasn't clear: this is one of two choices the chair picks between. */
       alternative?: boolean;
     }
-  | { kind: 'score'; side: Side; number?: string; points: 1 | 2 | 3; clock: string }
+  | { kind: 'score'; side: Side; number?: string; points: 1 | 2 | 3; clock: string; alternative?: boolean }
   | { kind: 'timeout'; side: Side; clock: string }
   | { kind: 'warning'; side: Side; warningType: WarningType; clock: string }
   | {
@@ -149,8 +149,14 @@ const NAMED_COLOURS: [string, [number, number, number]][] = [
   ['grey', [107, 114, 128]]
 ];
 
+// Includes what speech recognition actually wrote at a game: "what 21 point",
+// "wife 15", "read 24", "grade 23".
 const COLOUR_ALIASES: Record<string, string[]> = {
+  white: ['what', 'why', 'wife', 'wipe', 'watch', 'wide', 'quite', 'wait', 'while', 'whites', 'wight', 'wine', 'wise', 'whyte'],
+  red: ['read', 'grade', 'rid', 'bread', 'reds', 'ride', 'ready', 'rad', 'rate'],
+  black: ['block', 'blacks', 'blank', 'plaque', 'black s', 'lack'],
   grey: ['gray', 'silver'],
+  green: ['queen', 'grain', 'greens'],
   navy: ['dark blue', 'navy blue'],
   blue: ['light blue', 'sky blue', 'royal'],
   maroon: ['burgundy'],
@@ -250,6 +256,7 @@ function pad(n: number) {
 export function extractClock(clause: string): { clock: string | null; rest: string } {
   const patterns: [RegExp, (m: RegExpExecArray) => string][] = [
     [/\b(\d{1,2}) minutes? (?:and )?(\d{1,2}) (?:seconds?|secs?)\b/, m => `${pad(+m[1])}:${pad(+m[2])}`],
+    [/\b(\d{1,2}) minutes? (?:and )?(\d{1,2})\b/, m => `${pad(+m[1])}:${pad(+m[2])}`],
     [/\b(\d{1,2}):(\d{2})\b/, m => `${pad(+m[1])}:${m[2]}`],
     [/\b(?:at|with|clock) (\d{1,2}) (\d{2})\b/, m => `${pad(+m[1])}:${m[2]}`],
     [/\b(?:at|with|clock) (\d)(\d{2})\b/, m => `${pad(+m[1])}:${m[2]}`],
@@ -282,6 +289,19 @@ const POINTS_RE = /\b([123]) (?:points?|pointer|pointers|pts?)\b|\bfree throw(?:
 
 const COMMAND_RE =
   /\b(points?|pointer|free throw|foul|fouls|technical|tech|unsportsmanlike|unsporting|disqualifying|disqualified|timeout|warning|arrow|possession|jump ball|held ball|lodged|score|scores|quarter|half time|halftime|protest)\b/;
+
+/**
+ * "white 21 point" is really "white 2, 1 point": recognition glues the jersey
+ * number and the points value together. Split the last digit off a number
+ * that sits right before "point(s)" when no separate 1–3 value was said.
+ */
+function unglueNumberPoints(text: string): string {
+  return text.replace(/\b(\d{1,2})([123]) (points?|pointer)\b/g, (m, num, pts, word, offset, all) => {
+    const before = all.slice(Math.max(0, offset - 12), offset);
+    if (/\b[123] $/.test(before)) return m;
+    return `${num} ${pts} ${word}`;
+  });
+}
 
 function splitClauses(text: string): string[] {
   const raw = text
@@ -331,7 +351,7 @@ export function parseCommand(text: string, game: Game): ParseResult {
   const lastClock = game.lastGameClock || DEFAULT_CLOCK;
   const leftSide: Side = game.layout === 'A-left' ? 'A' : 'B';
 
-  for (const original of splitClauses(normalise(text))) {
+  for (const original of splitClauses(unglueNumberPoints(normalise(text)))) {
     const { clock: spokenClock, rest: noClock } = extractClock(original);
     const clock = spokenClock ?? lastClock;
     const mentions = findMentions(noClock, kw);
@@ -368,7 +388,9 @@ export function parseCommand(text: string, game: Game): ParseResult {
           side = inA && !inB ? 'A' : inB && !inA ? 'B' : null;
         }
         if (!side) {
-          problems.push(`${points} points — which team? ("${original}")`);
+          for (const alt of ['A', 'B'] as const) {
+            actions.push({ kind: 'score', side: alt, number, points, clock, alternative: true });
+          }
           continue;
         }
         actions.push({ kind: 'score', side, number, points, clock });
@@ -538,7 +560,15 @@ export function parseCommand(text: string, game: Game): ParseResult {
       }
     }
   }
-  return { actions, problems };
+  // "white three or three" — the same action heard twice in one phrase.
+  const seen = new Set<string>();
+  const unique = actions.filter(a => {
+    const k = JSON.stringify(a);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return { actions: unique, problems };
 }
 
 /**

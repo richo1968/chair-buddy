@@ -36,8 +36,8 @@ interface Props {
   onLog: (transcript: string, proposed: string[], outcome: 'confirmed' | 'cancelled' | 'not-understood') => void;
 }
 
-type FoulAction = Extract<VoiceAction, { kind: 'foul' }>;
-const isAlt = (a: VoiceAction): a is FoulAction => a.kind === 'foul' && !!a.alternative;
+type AltAction = Extract<VoiceAction, { kind: 'foul' | 'score' }>;
+const isAlt = (a: VoiceAction): a is AltAction => (a.kind === 'foul' || a.kind === 'score') && !!a.alternative;
 
 const YES = /^(yes|yep|yeah|confirm|confirmed|correct|ok|okay|good|that s right|thats right)\b/;
 const NO = /^(no|nope|cancel|wrong|scratch that|delete that|undo)\b/;
@@ -55,6 +55,13 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
   const [partial, setPartial] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [queue, setQueue] = useState<Pending[]>([]);
+  /** Brief, non-blocking note when a phrase couldn't be turned into an entry. */
+  const [missed, setMissed] = useState<string | null>(null);
+  useEffect(() => {
+    if (!missed) return;
+    const t = window.setTimeout(() => setMissed(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [missed]);
   const nextId = useRef(1);
 
   // Listener callbacks are registered once; read live values through refs.
@@ -153,6 +160,12 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
         // No Apple Intelligence — keep the rule-based result.
       }
     }
+    if (result.actions.length === 0) {
+      // Nothing usable: log it and show a short note, no pop-up to dismiss.
+      setMissed(text);
+      propsRef.current.onLog(text, result.problems, 'not-understood');
+      return;
+    }
     for (const a of result.actions) {
       if (a.kind === 'timeout') propsRef.current.onTimeoutHeard(a.side);
     }
@@ -249,6 +262,8 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
         <div className="text-xs text-muted-fg min-h-[1rem] truncate max-w-full">
           {error ? (
             <span className="text-danger">{error}</span>
+          ) : missed ? (
+            <span className="text-warn">Didn't catch a command in “{missed}” — try again</span>
           ) : listening ? (
             partial ? `“${partial}”` : 'Say e.g. “foul white 4 at 3:12” · “timeout black” · “arrow white”'
           ) : (
