@@ -41,6 +41,21 @@ export interface EventBase {
   gameClock: string;
   wallTimestamp: number;
   quarter: Quarter;
+  /** 'voice' when entered by spoken command (Pro) rather than tapped. */
+  source?: 'voice';
+  /** What was heard, for voice entries. */
+  transcript?: string;
+}
+
+/** One spoken phrase and what Chair Buddy did with it. */
+export interface VoiceLogEntry {
+  id: string;
+  at: number;
+  quarter: Quarter;
+  transcript: string;
+  /** Plain-English summary of each proposed action. */
+  proposed: string[];
+  outcome: 'confirmed' | 'cancelled' | 'not-understood';
 }
 
 export type ArrowDirection = 'left' | 'right';
@@ -158,6 +173,8 @@ export interface Game {
   /** When the game was archived (hidden from the main list; restorable). */
   archivedAt?: number;
   events: GameEvent[];
+  /** Spoken commands heard during the game (Pro voice entry). */
+  voiceLog?: VoiceLogEntry[];
   quarterScores: QuarterScore[];
   createdAt: number;
   updatedAt: number;

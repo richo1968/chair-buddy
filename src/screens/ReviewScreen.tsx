@@ -189,6 +189,41 @@ export function ReviewScreen() {
           <SectionTitle>Event log</SectionTitle>
           <EventList events={events} game={activeGame} />
         </section>
+
+        {(activeGame.voiceLog?.length ?? 0) > 0 && (
+          <section className="rounded-3xl border border-border bg-surface p-5 print:hidden">
+            <SectionTitle>Voice log (Pro)</SectionTitle>
+            <div className="space-y-2">
+              {activeGame.voiceLog!.map(v => (
+                <div key={v.id} className="text-sm border-b border-border pb-2 last:border-0">
+                  <div className="flex items-center gap-2 text-xs text-muted-fg">
+                    <span className="font-mono">{v.quarter}</span>
+                    <span>{new Date(v.at).toLocaleTimeString()}</span>
+                    <span
+                      className={
+                        v.outcome === 'confirmed'
+                          ? 'text-accent font-semibold'
+                          : v.outcome === 'cancelled'
+                            ? 'text-warn font-semibold'
+                            : 'font-semibold'
+                      }
+                    >
+                      {v.outcome === 'confirmed'
+                        ? 'Confirmed'
+                        : v.outcome === 'cancelled'
+                          ? 'Cancelled'
+                          : 'Not understood'}
+                    </span>
+                  </div>
+                  <div className="italic text-muted-fg">“{v.transcript}”</div>
+                  {v.proposed.map((p, i) => (
+                    <div key={i}>→ {p}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
     </>

@@ -6,6 +6,7 @@ import type {
   GameEvent,
   GameOutcome,
   Player,
+  VoiceLogEntry,
   Quarter,
   Side,
   Team
@@ -32,6 +33,7 @@ export type Action =
   | { type: 'ADD_EVENT'; event: GameEvent }
   | { type: 'UPDATE_EVENT'; eventId: string; patch: Partial<GameEvent> }
   | { type: 'DELETE_EVENT'; eventId: string }
+  | { type: 'LOG_VOICE'; entry: VoiceLogEntry }
   | { type: 'SET_LAST_CLOCK'; clock: string }
   | {
       type: 'SET_POSSESSION';
@@ -176,6 +178,11 @@ export function reducer(state: AppState, action: Action): AppState {
         }
         return next;
       });
+
+    case 'LOG_VOICE':
+      return mapActive(state, g =>
+        touch({ ...g, voiceLog: [...(g.voiceLog ?? []), action.entry] })
+      );
 
     case 'UPDATE_EVENT':
       return mapActive(state, g =>

@@ -32,8 +32,11 @@ import { OfficialsModal } from '@/components/game/modals/OfficialsModal';
 import { GameDetailsModal } from '@/components/game/modals/GameDetailsModal';
 import { ProtestModal } from '@/components/game/modals/ProtestModal';
 import { PastQuarterModal } from '@/components/game/modals/PastQuarterModal';
+import { VoicePanel } from '@/components/game/VoicePanel';
+import type { VoiceAction } from '@/lib/voice/parse';
+import { hasPro } from '@/lib/pro';
 import type { PastEntryResult } from '@/components/game/modals/PastQuarterModal';
-import { newId, previousQuarters } from '@/lib/game';
+import { newId, previousQuarters, totalScore } from '@/lib/game';
 import type {
   ArrowDirection,
   FoulSubject,
@@ -249,6 +252,106 @@ export function GameScreen() {
     clearPastTarget();
   };
 
+  /** Applies confirmed voice commands, tagging each entry as voice-entered. */
+  const applyVoiceActions = (actions: VoiceAction[], transcript: string) => {
+    const tag = { source: 'voice' as const, transcript, wallTimestamp: Date.now() };
+    for (const a of actions) {
+      const quarter = activeGame.currentQuarter;
+      switch (a.kind) {
+        case 'foul': {
+          let on: FoulSubject;
+          if (a.subject === 'player') {
+            const team = a.side === 'A' ? activeGame.teamA : activeGame.teamB;
+            let player = team.players.find(
+              p => p.number === a.number || String(+p.number) === a.number
+            );
+            if (!player) {
+              player = { id: newId(), number: a.number! };
+              dispatch({ type: 'ADD_PLAYER', side: a.side, player });
+            }
+            on = { kind: 'player', playerId: player.id };
+          } else {
+            on = { kind: a.subject };
+          }
+          dispatch({
+            type: 'ADD_EVENT',
+            event: {
+              id: newId(),
+              kind: 'foul',
+              quarter,
+              gameClock: a.clock,
+              team: a.side,
+              on,
+              type: a.type,
+              ...(a.freeThrows ? { freeThrows: { awarded: a.freeThrows } } : {}),
+              ...tag
+            }
+          });
+          break;
+        }
+        case 'timeout':
+          dispatch({
+            type: 'ADD_EVENT',
+            event: { id: newId(), kind: 'timeout', quarter, gameClock: a.clock, team: a.side, forfeited: false, ...tag }
+          });
+          break;
+        case 'warning':
+          dispatch({
+            type: 'ADD_EVENT',
+            event: {
+              id: newId(),
+              kind: 'warning',
+              quarter,
+              gameClock: a.clock,
+              target: a.side === 'A' ? 'teamA' : 'teamB',
+              warningType: a.warningType,
+              ...tag
+            }
+          });
+          break;
+        case 'possession':
+          if (a.initial) {
+            dispatch({ type: 'INITIAL_POSSESSION', team: a.side, direction: a.direction });
+          } else {
+            dispatch({
+              type: 'ADD_EVENT',
+              event: {
+                id: newId(),
+                kind: 'possessionChange',
+                quarter,
+                gameClock: a.clock,
+                newTeam: a.side,
+                newArrowDirection: a.direction,
+                reason: a.reason,
+                ...tag
+              }
+            });
+          }
+          break;
+        case 'quarterScore': {
+          // Spoken scores are the scoreboard (cumulative); the game stores
+          // points per quarter, as the Record score modal does.
+          const existing = activeGame.quarterScores.find(qs => qs.quarter === quarter);
+          const prevA = totalScore(activeGame, 'A') - (existing?.teamAScore ?? 0);
+          const prevB = totalScore(activeGame, 'B') - (existing?.teamBScore ?? 0);
+          recordQuarterScore(
+            Math.max(0, a.a - prevA),
+            Math.max(0, a.b - prevB),
+            activeGame.lastGameClock,
+            a.flipArrow && activeGame.possessionArrow !== null
+          );
+          break;
+        }
+        case 'protest':
+          dispatch({
+            type: 'ADD_EVENT',
+            event: { id: newId(), kind: 'protest', quarter, gameClock: a.clock, team: a.side, reason: a.reason, ...tag }
+          });
+          break;
+      }
+    }
+  };
+
   const cancelTimeoutTimer = () => {
     setActiveTimeout(null);
   };
@@ -435,6 +538,28 @@ export function GameScreen() {
               if (ev) setEditingEvent(ev);
             }}
           />
+
+          {hasPro() && (
+            <VoicePanel
+              game={activeGame}
+              onTimeoutHeard={side => setActiveTimeout({ team: side, startedAt: Date.now() })}
+              onTimeoutCancelled={() => setActiveTimeout(null)}
+              onConfirm={applyVoiceActions}
+              onLog={(transcript, proposed, outcome) =>
+                dispatch({
+                  type: 'LOG_VOICE',
+                  entry: {
+                    id: newId(),
+                    at: Date.now(),
+                    quarter: activeGame.currentQuarter,
+                    transcript,
+                    proposed,
+                    outcome
+                  }
+                })
+              }
+            />
+          )}
 
           <div className="mt-auto">
             <WarningsGrid onTap={type => setWarningType(type)} />

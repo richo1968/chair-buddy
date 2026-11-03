@@ -1,4 +1,5 @@
 import {
+  Mic,
   AlertOctagon,
   AlertTriangle,
   ArrowLeftRight,
@@ -104,6 +105,9 @@ export function EventLog({ game, onEventTap }: Props) {
                     </span>
                     <span className="text-sm flex-1 truncate">
                       {describeEvent(ev, game)}
+                      {ev.source === 'voice' && (
+                        <Mic className="inline w-3 h-3 ml-1 text-accent align-[-1px]" aria-label="Voice entry" />
+                      )}
                     </span>
                   </button>
                 </li>

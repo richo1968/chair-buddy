@@ -26,6 +26,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Chair Buddy listens for scoretable calls (fouls, timeouts, arrow changes) when you turn on voice entry.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Chair Buddy turns your spoken scoretable calls into game entries. Recognition runs on your iPad where supported.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
