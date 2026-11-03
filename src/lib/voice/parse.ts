@@ -20,6 +20,8 @@ export type VoiceAction =
       type: FoulType;
       freeThrows?: number;
       clock: string;
+      /** Team wasn't clear: this is one of two choices the chair picks between. */
+      alternative?: boolean;
     }
   | { kind: 'score'; side: Side; number?: string; points: 1 | 2 | 3; clock: string }
   | { kind: 'timeout'; side: Side; clock: string }
@@ -53,6 +55,24 @@ const TENS: Record<string, number> = {
   twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
   eighty: 80, ninety: 90
 };
+/**
+ * Basketball words speech recognition commonly mishears. At a scoretable,
+ * "number 1 fell at 3 minutes" means a foul.
+ */
+const SOUND_ALIKES: Record<string, string> = {
+  fell: 'foul', fall: 'foul', falls: 'foul', fallen: 'foul', full: 'foul', fool: 'foul',
+  fools: 'foul', fowl: 'foul', foal: 'foul', fail: 'foul', file: 'foul', fuel: 'foul',
+  fault: 'foul', faults: 'foul', fouled: 'foul', fouling: 'foul', foll: 'foul', fol: 'foul',
+  howl: 'foul', foley: 'foul', thou: 'foul', vowel: 'foul', towel: 'foul', fowls: 'foul',
+  timeouts: 'timeout', timer: 'timeout',
+  morning: 'warning', warming: 'warning', warn: 'warning', warned: 'warning',
+  arrows: 'arrow', aero: 'arrow', error: 'arrow', errol: 'arrow', harrow: 'arrow', narrow: 'arrow',
+  tech: 'technical', techs: 'technical', technicals: 'technical', tea: 'technical',
+  unsporting: 'unsportsmanlike', unsportsman: 'unsportsmanlike', unsportsmen: 'unsportsmanlike',
+  pointers: 'pointer', pts: 'points', pints: 'points', paints: 'points', joints: 'points',
+  numbers: 'number', no: 'number', num: 'number'
+};
+
 /** Words speech recognition writes for a number when it mishears one. */
 const HOMOPHONES: Record<string, string> = {
   to: '2', too: '2', won: '1', for: '4', fore: '4', ate: '8', tree: '3', free: '3'
@@ -88,9 +108,13 @@ export function normalise(text: string): string {
   s = s.replace(/(\d)\s*:\s*(\d)/g, '$1:$2');
   s = s.replace(/[^a-z0-9:#\s]/g, ' ');
   s = s.replace(/#\s*/g, 'number ');
-  s = s.replace(/\btime\s+out\b/g, 'timeout');
+  s = s.replace(/\b(?:time|tie|type|tired|times?)\s+(?:out|outs|now)\b/g, 'timeout');
+  s = s.replace(/\bfree\s+(?:through|thru|threw|row)\b/g, 'free throw');
+  s = s.replace(/\b(?:jump|jumped)\s+(?:bowl|bull|bald|call|all)\b/g, 'jump ball');
+  s = s.replace(/\bheld\s+(?:bowl|bull|bald|all)\b/g, 'held ball');
   s = s.replace(/\bno\.\s*/g, 'number ');
   let tokens = s.split(/\s+/).filter(Boolean);
+  tokens = tokens.map(t => SOUND_ALIKES[t] ?? t);
   tokens = wordsToDigits(tokens);
   // "number for" / "number to" → digits
   tokens = tokens.map((t, i) =>
@@ -408,7 +432,9 @@ export function parseCommand(text: string, game: Game): ParseResult {
           if (prev.kind === 'foul') side = prev.side === 'A' ? 'B' : 'A';
         }
         if (!side) {
-          problems.push(`Foul on #${n.number} — which team? ("${original}")`);
+          for (const alt of ['A', 'B'] as const) {
+            actions.push({ kind: 'foul', side: alt, subject: 'player', number: n.number, type, freeThrows: fts, clock, alternative: true });
+          }
           return;
         }
         actions.push({
@@ -485,13 +511,41 @@ export function parseCommand(text: string, game: Game): ParseResult {
       });
       continue;
     }
+
+    // No action word, but a player was named ("white 4 at 3 minutes") — at
+    // the scoretable that's almost always a foul. The chair confirms it.
+    const guess = numbersByTeam(c, mentions);
+    if (guess.length && (mentions.length || /\bnumber\b/.test(c))) {
+      for (const n of guess) {
+        let side = n.side;
+        if (!side) {
+          const inA = onRoster(game, 'A', n.number);
+          const inB = onRoster(game, 'B', n.number);
+          side = inA && !inB ? 'A' : inB && !inA ? 'B' : null;
+        }
+        if (!side) {
+          for (const alt of ['A', 'B'] as const) {
+            actions.push({ kind: 'foul', side: alt, subject: 'player', number: n.number, type: 'personal', clock, alternative: true });
+          }
+          continue;
+        }
+        actions.push({ kind: 'foul', side, subject: 'player', number: n.number, type: 'personal', clock });
+      }
+    }
   }
   return { actions, problems };
 }
 
-/** True when the phrase has any command word at all (otherwise it's chatter). */
-export function looksLikeCommand(text: string): boolean {
-  return COMMAND_RE.test(normalise(text));
+/**
+ * True when the phrase is worth interpreting: a command word, or a team /
+ * "number" plus a jersey number. Anything else is table chatter.
+ */
+export function looksLikeCommand(text: string, game?: Game): boolean {
+  const n = normalise(text);
+  if (COMMAND_RE.test(n)) return true;
+  if (!/\b\d{1,2}\b/.test(n)) return false;
+  if (/\bnumber\b/.test(n)) return true;
+  return game ? findMentions(n, teamKeywords(game)).length > 0 : false;
 }
 
 // ---------------------------------------------------------------- display

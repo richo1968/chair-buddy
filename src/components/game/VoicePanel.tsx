@@ -32,6 +32,9 @@ interface Props {
   onLog: (transcript: string, proposed: string[], outcome: 'confirmed' | 'cancelled' | 'not-understood') => void;
 }
 
+type FoulAction = Extract<VoiceAction, { kind: 'foul' }>;
+const isAlt = (a: VoiceAction): a is FoulAction => a.kind === 'foul' && !!a.alternative;
+
 const YES = /^(yes|yep|yeah|confirm|confirmed|correct|ok|okay|good|that s right|thats right)\b/;
 const NO = /^(no|nope|cancel|wrong|scratch that|delete that|undo)\b/;
 
@@ -79,13 +82,13 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
     const said = normalise(text);
     const head = queueRef.current[0];
     if (head) {
-      if (YES.test(said) && head.actions.length) return confirm(head);
+      if (YES.test(said) && head.actions.length && !head.actions.some(isAlt)) return confirm(head);
       if (NO.test(said)) return cancel(head);
     }
     // Ordinary chatter (no command words) is ignored entirely.
-    if (!looksLikeCommand(text)) return;
-
     const g = gameRef.current;
+    if (!looksLikeCommand(text, g)) return;
+
     let result = parseCommand(text, g);
     let viaAI = false;
     if (result.actions.length === 0) {
@@ -225,7 +228,7 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
             </div>
             <div className="px-5 text-base italic text-muted-fg">“{head.transcript}”</div>
             <div className="px-5 py-3 space-y-2">
-              {head.actions.map((a, i) => (
+              {head.actions.filter(a => !isAlt(a)).map((a, i) => (
                 <div key={i} className="flex items-start gap-2 text-lg font-semibold">
                   <Check className="w-5 h-5 mt-1 text-accent shrink-0" />
                   {describeAction(a, game)}
@@ -240,12 +243,33 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
                 <div className="text-sm text-warn">Didn't catch a command in that.</div>
               )}
             </div>
+            {head.actions.some(isAlt) && (
+              <div className="px-5 pb-3">
+                <div className="text-sm text-warn mb-2">Which team?</div>
+                <div className="flex gap-3">
+                  {head.actions.filter(isAlt).map((a, i) => {
+                    const team = a.side === 'A' ? game.teamA : game.teamB;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => confirm({ ...head, actions: [...head.actions.filter(x => !isAlt(x)), { ...a, alternative: false } as VoiceAction] })}
+                        className="flex-1 rounded-2xl border-4 border-white/70 px-3 py-3 text-lg font-bold active:brightness-110 transition-none"
+                        style={{ backgroundColor: team.jerseyColour, color: team.numberColour }}
+                      >
+                        {describeAction({ ...a, alternative: false } as VoiceAction, game)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="px-5 pb-4 flex gap-3">
               <Button variant="ghost" size="xl" className="flex-1" onClick={() => cancel(head)}>
                 <X className="w-5 h-5" />
                 {head.actions.length ? 'Cancel' : 'Dismiss'}
               </Button>
-              {head.actions.length > 0 && (
+              {head.actions.length > 0 && !head.actions.some(isAlt) && (
                 <Button size="xl" className="flex-[2]" onClick={() => confirm(head)}>
                   <Check className="w-5 h-5" />
                   Confirm

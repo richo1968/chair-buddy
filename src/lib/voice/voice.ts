@@ -31,7 +31,11 @@ export const voiceSupported = isIOS;
  */
 export function interpretInstructions(teamA: string, teamB: string): string {
   return [
-    'You convert a basketball scoretable official\'s spoken words into short commands.',
+    'You are at a basketball scoretable. Convert what the table official said into short commands.',
+    'The words came from speech recognition and are often misheard. Think basketball:',
+    '"fell", "full", "fall", "fowl" almost always mean "foul"; "time out" means "timeout";',
+    '"error"/"arrows" mean "arrow"; "morning" means "warning". A team name or colour plus a',
+    'player number with no clear action is a foul. Jersey numbers are 0–99; times are mm:ss game clock.',
     `The two teams are "${teamA}" and "${teamB}".`,
     'Reply with one command per line and nothing else. Use only these forms:',
     '- foul <team> number <n> at <mm:ss>',
