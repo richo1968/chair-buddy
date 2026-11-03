@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   AlertOctagon,
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Moon,
   Settings,
   Sun,
+  Undo2,
   UserSquare
 } from 'lucide-react';
 import { useApp } from '@/state/AppProvider';
@@ -32,11 +33,22 @@ import { OfficialsModal } from '@/components/game/modals/OfficialsModal';
 import { GameDetailsModal } from '@/components/game/modals/GameDetailsModal';
 import { ProtestModal } from '@/components/game/modals/ProtestModal';
 import { PastQuarterModal } from '@/components/game/modals/PastQuarterModal';
+import { UndoModal } from '@/components/game/modals/UndoModal';
 import { VoicePanel } from '@/components/game/VoicePanel';
 import type { VoiceAction } from '@/lib/voice/parse';
 import { hasPro } from '@/lib/pro';
 import type { PastEntryResult } from '@/components/game/modals/PastQuarterModal';
-import { newId, previousQuarters, totalScore } from '@/lib/game';
+import {
+  livePoints,
+  newId,
+  playerFoulStats,
+  playerPoints,
+  previousQuarters,
+  timeoutStatus,
+  totalScore
+} from '@/lib/game';
+import { FOUL_TYPE_LABEL, WARNING_TYPE_LABEL } from '@/lib/events';
+import { Spotlight, type SpotlightData, type SpotlightItem } from '@/components/game/Spotlight';
 import type {
   ArrowDirection,
   FoulSubject,
@@ -78,6 +90,11 @@ export function GameScreen() {
   /** When set, the next foul/warning/timeout/protest entry is logged into this
    *  past quarter instead of the current one. Cleared on commit or cancel. */
   const [pastQuarterTarget, setPastQuarterTarget] = useState<Quarter | null>(null);
+  const [spotlight, setSpotlight] = useState<SpotlightData | null>(null);
+  const [undoOpen, setUndoOpen] = useState(false);
+  /** Entries undone this session, newest first, so they can be redone. */
+  const [undone, setUndone] = useState<GameEvent[]>([]);
+  const clearSpotlight = useCallback(() => setSpotlight(null), []);
 
   // Persisted UI preference: ratio of the team-panel split between player
   // grid (top) and event log (bottom). Shared across both teams so the layout
@@ -124,6 +141,7 @@ export function GameScreen() {
     dispatch({ type: 'ADD_EVENT', event });
     setFoulTarget(null);
     clearPastTarget();
+    setSpotlight({ key: Date.now(), items: [spotlightItem(event, { ...activeGame, events: [...activeGame.events, event] })] });
   };
 
   const logProtest = (team: Side, reason: string, gameClock: string) => {
@@ -255,76 +273,84 @@ export function GameScreen() {
   /** Applies confirmed voice commands, tagging each entry as voice-entered. */
   const applyVoiceActions = (actions: VoiceAction[], transcript: string) => {
     const tag = { source: 'voice' as const, transcript, wallTimestamp: Date.now() };
+    // Working copy so the spotlight shows counts including this batch.
+    let g = activeGame;
+    const added: GameEvent[] = [];
+    const add = (event: GameEvent) => {
+      dispatch({ type: 'ADD_EVENT', event });
+      g = { ...g, events: [...g.events, event] };
+      added.push(event);
+    };
     for (const a of actions) {
       const quarter = activeGame.currentQuarter;
       switch (a.kind) {
-        case 'foul': {
-          let on: FoulSubject;
-          if (a.subject === 'player') {
-            const team = a.side === 'A' ? activeGame.teamA : activeGame.teamB;
-            let player = team.players.find(
+        case 'foul':
+        case 'score': {
+          let playerId: string | undefined;
+          if (a.kind === 'score' ? a.number : a.subject === 'player') {
+            const sideKey = a.side === 'A' ? 'teamA' : 'teamB';
+            let player = g[sideKey].players.find(
               p => p.number === a.number || String(+p.number) === a.number
             );
             if (!player) {
               player = { id: newId(), number: a.number! };
               dispatch({ type: 'ADD_PLAYER', side: a.side, player });
+              g = { ...g, [sideKey]: { ...g[sideKey], players: [...g[sideKey].players, player] } };
             }
-            on = { kind: 'player', playerId: player.id };
-          } else {
-            on = { kind: a.subject };
+            playerId = player.id;
           }
-          dispatch({
-            type: 'ADD_EVENT',
-            event: {
-              id: newId(),
-              kind: 'foul',
-              quarter,
-              gameClock: a.clock,
-              team: a.side,
-              on,
-              type: a.type,
-              ...(a.freeThrows ? { freeThrows: { awarded: a.freeThrows } } : {}),
-              ...tag
-            }
+          if (a.kind === 'score') {
+            add({ id: newId(), kind: 'score', quarter, gameClock: a.clock, team: a.side, playerId, points: a.points, ...tag });
+            break;
+          }
+          const on: FoulSubject = playerId
+            ? { kind: 'player', playerId }
+            : { kind: a.subject === 'coach' ? 'coach' : 'bench' };
+          add({
+            id: newId(),
+            kind: 'foul',
+            quarter,
+            gameClock: a.clock,
+            team: a.side,
+            on,
+            type: a.type,
+            ...(a.freeThrows ? { freeThrows: { awarded: a.freeThrows } } : {}),
+            ...tag
           });
           break;
         }
         case 'timeout':
-          dispatch({
-            type: 'ADD_EVENT',
-            event: { id: newId(), kind: 'timeout', quarter, gameClock: a.clock, team: a.side, forfeited: false, ...tag }
-          });
+          add({ id: newId(), kind: 'timeout', quarter, gameClock: a.clock, team: a.side, forfeited: false, ...tag });
           break;
         case 'warning':
-          dispatch({
-            type: 'ADD_EVENT',
-            event: {
-              id: newId(),
-              kind: 'warning',
-              quarter,
-              gameClock: a.clock,
-              target: a.side === 'A' ? 'teamA' : 'teamB',
-              warningType: a.warningType,
-              ...tag
-            }
+          add({
+            id: newId(),
+            kind: 'warning',
+            quarter,
+            gameClock: a.clock,
+            target: a.side === 'A' ? 'teamA' : 'teamB',
+            warningType: a.warningType,
+            ...tag
           });
           break;
         case 'possession':
           if (a.initial) {
             dispatch({ type: 'INITIAL_POSSESSION', team: a.side, direction: a.direction });
+            setSpotlight({
+              key: Date.now(),
+              voice: true,
+              items: [arrowItem(a.side, a.direction, 'Opening arrow')]
+            });
           } else {
-            dispatch({
-              type: 'ADD_EVENT',
-              event: {
-                id: newId(),
-                kind: 'possessionChange',
-                quarter,
-                gameClock: a.clock,
-                newTeam: a.side,
-                newArrowDirection: a.direction,
-                reason: a.reason,
-                ...tag
-              }
+            add({
+              id: newId(),
+              kind: 'possessionChange',
+              quarter,
+              gameClock: a.clock,
+              newTeam: a.side,
+              newArrowDirection: a.direction,
+              reason: a.reason,
+              ...tag
             });
           }
           break;
@@ -340,16 +366,98 @@ export function GameScreen() {
             activeGame.lastGameClock,
             a.flipArrow && activeGame.possessionArrow !== null
           );
+          setSpotlight({
+            key: Date.now(),
+            voice: true,
+            items: [{ badge: quarter, jerseyColour: '#0b0f14', numberColour: '#ffffff', title: `${a.a} – ${a.b}`, detail: 'Scoreboard recorded' }]
+          });
           break;
         }
         case 'protest':
-          dispatch({
-            type: 'ADD_EVENT',
-            event: { id: newId(), kind: 'protest', quarter, gameClock: a.clock, team: a.side, reason: a.reason, ...tag }
-          });
+          add({ id: newId(), kind: 'protest', quarter, gameClock: a.clock, team: a.side, reason: a.reason, ...tag });
           break;
       }
     }
+    if (added.length) {
+      setSpotlight({ key: Date.now(), voice: true, items: added.map(e => spotlightItem(e, g)) });
+    }
+  };
+
+  const arrowItem = (side: Side, dir: ArrowDirection, title: string): SpotlightItem => {
+    const team = side === 'A' ? activeGame.teamA : activeGame.teamB;
+    return {
+      badge: dir === 'left' ? '←' : '→',
+      jerseyColour: team.jerseyColour,
+      numberColour: team.numberColour,
+      title,
+      detail: team.name || `Team ${side}`
+    };
+  };
+
+  /** What the spotlight shows for a just-logged event (g includes it). */
+  const spotlightItem = (e: GameEvent, g: typeof activeGame): SpotlightItem => {
+    const sideOf: Side =
+      e.kind === 'warning' ? (e.target === 'teamA' ? 'A' : 'B')
+        : e.kind === 'possessionChange' ? e.newTeam
+          : e.kind === 'quarterScoreRecorded' ? 'A'
+            : e.team;
+    const team = sideOf === 'A' ? g.teamA : g.teamB;
+    const base = { jerseyColour: team.jerseyColour, numberColour: team.numberColour };
+    const teamLabel = team.name || `Team ${sideOf}`;
+    switch (e.kind) {
+      case 'foul': {
+        if (e.on.kind !== 'player') {
+          return { ...base, badge: e.on.kind === 'coach' ? 'C' : 'B', title: `${FOUL_TYPE_LABEL[e.type]} — ${e.on.kind}`, detail: teamLabel };
+        }
+        const pid = e.on.playerId;
+        const player = team.players.find(p => p.id === pid);
+        const s = playerFoulStats(g, pid);
+        const status = s.ejected ? ' · OUT' : s.fourFoulWarning ? ' · one more!' : '';
+        return {
+          ...base,
+          badge: player?.number ?? '?',
+          title: `${FOUL_TYPE_LABEL[e.type]} foul${e.freeThrows ? ` · ${e.freeThrows.awarded} FT` : ''}`,
+          detail: `${s.total} foul${s.total === 1 ? '' : 's'}${status}${player?.name ? ` · ${player.name}` : ''}`
+        };
+      }
+      case 'score': {
+        const player = e.playerId ? team.players.find(p => p.id === e.playerId) : undefined;
+        return {
+          ...base,
+          badge: player?.number ?? '+',
+          title: `+${e.points} point${e.points > 1 ? 's' : ''}`,
+          detail: `${e.playerId ? `${playerPoints(g, e.playerId)} pts · ` : ''}${teamLabel} ${livePoints(g, sideOf)}`
+        };
+      }
+      case 'timeout': {
+        const st = timeoutStatus(g, sideOf);
+        return { ...base, badge: 'T/O', title: 'Timeout', detail: `${teamLabel} · ${st.used} of ${st.max} used` };
+      }
+      case 'warning':
+        return { ...base, badge: '!', title: WARNING_TYPE_LABEL[e.warningType], detail: teamLabel };
+      case 'possessionChange':
+        return arrowItem(e.newTeam, e.newArrowDirection, 'Arrow');
+      case 'protest':
+        return { ...base, badge: '!', title: 'Protest', detail: teamLabel };
+      case 'quarterScoreRecorded':
+        return { ...base, badge: e.quarterScored, title: `${e.teamAScore} – ${e.teamBScore}` };
+    }
+  };
+
+  const logScore = (side: Side, playerId: string, points: 1 | 2 | 3) => {
+    const event: GameEvent = {
+      id: newId(),
+      kind: 'score',
+      quarter: activeGame.currentQuarter,
+      gameClock: activeGame.lastGameClock,
+      wallTimestamp: Date.now(),
+      team: side,
+      playerId,
+      points
+    };
+    dispatch({ type: 'ADD_EVENT', event });
+    setFoulTarget(null);
+    setSpotlight({ key: Date.now(), items: [spotlightItem(event, { ...activeGame, events: [...activeGame.events, event] })] });
   };
 
   const cancelTimeoutTimer = () => {
@@ -432,6 +540,16 @@ export function GameScreen() {
           title="Edit table officials"
         >
           <UserSquare className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={() => setUndoOpen(true)}
+          aria-label="Undo"
+          title="Undo one of the last few entries"
+        >
+          <Undo2 className="w-4 h-4" />
+          Undo
         </Button>
         {hasPreviousQuarters && (
           <Button
@@ -592,6 +710,12 @@ export function GameScreen() {
             clearPastTarget();
           }}
           onCommit={logFoul}
+          onScore={
+            foulTarget.subject.kind === 'player'
+              ? (pts: 1 | 2 | 3) =>
+                  logScore(foulTarget.side, (foulTarget.subject as { playerId: string }).playerId, pts)
+              : undefined
+          }
           onStartTimeout={startTimeout}
           quarter={pastQuarterTarget ?? undefined}
         />
@@ -697,6 +821,23 @@ export function GameScreen() {
           }}
           onCommit={logProtest}
           quarter={pastQuarterTarget ?? undefined}
+        />
+      )}
+      <Spotlight data={spotlight} onDone={clearSpotlight} />
+      {undoOpen && (
+        <UndoModal
+          game={activeGame}
+          undone={undone}
+          onClose={() => setUndoOpen(false)}
+          onUndo={ev => {
+            dispatch({ type: 'DELETE_EVENT', eventId: ev.id });
+            if (ev.kind === 'timeout' && activeTimeout?.team === ev.team) setActiveTimeout(null);
+            setUndone(u => [ev, ...u.filter(x => x.id !== ev.id)]);
+          }}
+          onRedo={ev => {
+            dispatch({ type: 'ADD_EVENT', event: ev });
+            setUndone(u => u.filter(x => x.id !== ev.id));
+          }}
         />
       )}
       {pastQuarterOpen && (

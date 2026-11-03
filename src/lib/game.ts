@@ -154,6 +154,7 @@ export function eventBelongsToTeam(event: GameEvent, side: Side): boolean {
     case 'timeout':
       return event.team === side;
     case 'protest':
+    case 'score':
       return event.team === side;
     case 'quarterScoreRecorded':
       return true;
@@ -163,6 +164,21 @@ export function eventBelongsToTeam(event: GameEvent, side: Side): boolean {
 export function totalScore(game: Game, side: Side): number {
   return game.quarterScores.reduce(
     (acc, qs) => acc + (side === 'A' ? qs.teamAScore : qs.teamBScore),
+    0
+  );
+}
+
+/** Live points from scored baskets (not the recorded quarter scores). */
+export function livePoints(game: Game, side: Side): number {
+  return game.events.reduce(
+    (acc, e) => (e.kind === 'score' && e.team === side ? acc + e.points : acc),
+    0
+  );
+}
+
+export function playerPoints(game: Game, playerId: string): number {
+  return game.events.reduce(
+    (acc, e) => (e.kind === 'score' && e.playerId === playerId ? acc + e.points : acc),
     0
   );
 }

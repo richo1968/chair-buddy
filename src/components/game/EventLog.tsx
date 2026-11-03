@@ -1,4 +1,5 @@
 import {
+  CircleDot,
   Mic,
   AlertOctagon,
   AlertTriangle,
@@ -23,6 +24,8 @@ function eventIcon(ev: GameEvent): {
   classes: string;
 } {
   switch (ev.kind) {
+    case 'score':
+      return { Icon: CircleDot, classes: 'text-accent bg-accent/10' };
     case 'foul':
       return {
         Icon: Flag,

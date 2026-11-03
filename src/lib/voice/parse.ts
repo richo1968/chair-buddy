@@ -21,6 +21,7 @@ export type VoiceAction =
       freeThrows?: number;
       clock: string;
     }
+  | { kind: 'score'; side: Side; number?: string; points: 1 | 2 | 3; clock: string }
   | { kind: 'timeout'; side: Side; clock: string }
   | { kind: 'warning'; side: Side; warningType: WarningType; clock: string }
   | {
@@ -183,7 +184,7 @@ export function recognitionHints(game: Game): string[] {
     'disqualifying foul', 'double foul', 'coach technical', 'bench technical',
     'timeout', 'arrow', 'possession', 'jump ball', 'held ball', 'warning',
     'time delay warning', 'flop warning', 'end of quarter', 'score', 'protest',
-    'free throws', 'two shots', 'three shots'
+    'free throws', 'two shots', 'three shots', '2 points', '3 points', 'free throw'
   ];
 }
 
@@ -248,12 +249,14 @@ function extractFreeThrows(clause: string): { fts?: number; rest: string } {
 
 // ---------------------------------------------------------------- clauses
 
+const POINTS_RE = /\b([123]) (?:points?|pointer|pointers|pts?)\b|\bfree throw(?: made| good| in| scored)?\b|\blay ?up\b|\bbucket\b/;
+
 const COMMAND_RE =
-  /\b(foul|fouls|technical|tech|unsportsmanlike|unsporting|disqualifying|disqualified|timeout|warning|arrow|possession|jump ball|held ball|lodged|score|scores|quarter|half time|halftime|protest)\b/;
+  /\b(points?|pointer|free throw|foul|fouls|technical|tech|unsportsmanlike|unsporting|disqualifying|disqualified|timeout|warning|arrow|possession|jump ball|held ball|lodged|score|scores|quarter|half time|halftime|protest)\b/;
 
 function splitClauses(text: string): string[] {
   const raw = text
-    .split(/\b(?:and then|then|also|next)\b|[,.;]|\band\b(?= (?:a |an |the )?(?:foul|technical|timeout|warning|arrow|possession|jump|held|score|protest|double|personal|unsportsmanlike|coach|bench)\b)/)
+    .split(/\b(?:and then|then|also|next)\b|[,.;]|\band\b(?= (?:a |an |the )?(?:[123] points?|free throw|foul|technical|timeout|warning|arrow|possession|jump|held|score|protest|double|personal|unsportsmanlike|coach|bench)\b)/)
     .map(s => s.trim())
     .filter(Boolean);
   // A fragment with no command word belongs to the previous command
@@ -316,6 +319,31 @@ export function parseCommand(text: string, game: Game): ParseResult {
         .replace(new RegExp(`\\b(${kw[firstSide].join('|')})\\b`, 'g'), ' ')
         .replace(/\s+/g, ' ').trim();
       actions.push({ kind: 'protest', side: firstSide, reason, clock });
+      continue;
+    }
+
+    if (POINTS_RE.test(c) && !/\b(foul|fouls|technical|unsportsmanlike|disqualifying)\b/.test(c)) {
+      // "2 points white 6 and 3 points black 7" — one action per segment.
+      for (const seg of c.split(/\band\b/)) {
+        const pm = POINTS_RE.exec(seg);
+        if (!pm) continue;
+        const points = (pm[1] ? +pm[1] : /lay ?up|bucket/.test(pm[0]) ? 2 : 1) as 1 | 2 | 3;
+        const rest = seg.replace(pm[0], ' ');
+        const segMentions = findMentions(rest, kw);
+        const nums = numbersByTeam(rest, segMentions);
+        let side: Side | null = segMentions[0]?.side ?? null;
+        const number = nums[0]?.number;
+        if (!side && number) {
+          const inA = onRoster(game, 'A', number);
+          const inB = onRoster(game, 'B', number);
+          side = inA && !inB ? 'A' : inB && !inA ? 'B' : null;
+        }
+        if (!side) {
+          problems.push(`${points} points — which team? ("${original}")`);
+          continue;
+        }
+        actions.push({ kind: 'score', side, number, points, clock });
+      }
       continue;
     }
 
@@ -483,6 +511,8 @@ export function describeAction(a: VoiceAction, game: Game): string {
       const ft = a.freeThrows ? ` · ${a.freeThrows} FT` : '';
       return `${FOUL_TYPE_LABEL[a.type]} foul — ${teamLabel(game, a.side)} ${who}${ft} at ${a.clock}`;
     }
+    case 'score':
+      return `+${a.points} point${a.points > 1 ? 's' : ''} — ${teamLabel(game, a.side)}${a.number ? ` #${a.number}${playerName(game, a.side, a.number)}` : ''}`;
     case 'timeout':
       return `Timeout — ${teamLabel(game, a.side)} at ${a.clock} (timer started)`;
     case 'warning':

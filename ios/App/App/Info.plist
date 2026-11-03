@@ -26,6 +26,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo of a team sheet so Chair Buddy can read the player numbers and names.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Chair Buddy listens for scoretable calls (fouls, timeouts, arrow changes) when you turn on voice entry.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

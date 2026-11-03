@@ -1,5 +1,5 @@
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core';
-import { isNative } from '@/lib/native';
+import { isIOS } from '@/lib/native';
 
 interface VoicePlugin {
   requestAccess(): Promise<{ granted: boolean; reason?: string }>;
@@ -22,7 +22,7 @@ interface VoicePlugin {
 // Implemented in ios/App/App/ChairBuddyViewController.swift.
 export const Voice = registerPlugin<VoicePlugin>('Voice');
 
-export const voiceSupported = isNative;
+export const voiceSupported = isIOS;
 
 /**
  * Instructions for Apple Intelligence: rewrite a messy phrase into the plain

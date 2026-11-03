@@ -2,6 +2,7 @@ import UIKit
 import Capacitor
 import AVFoundation
 import Speech
+import Vision
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -11,6 +12,7 @@ class ChairBuddyViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(PrinterPlugin())
         bridge?.registerPluginInstance(VoicePlugin())
+        bridge?.registerPluginInstance(RosterScanPlugin())
     }
 }
 
@@ -240,5 +242,102 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
         }
         #endif
         call.resolve(["available": false])
+    }
+}
+
+/// Photographs a team sheet and reads it with Apple's on-device text
+/// recognition (Vision). Returns the text row by row, left to right, so a
+/// "number  name" table comes back as "4 Jane Smith" lines.
+@objc(RosterScanPlugin)
+public class RosterScanPlugin: CAPPlugin, CAPBridgedPlugin, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    public let identifier = "RosterScanPlugin"
+    public let jsName = "RosterScan"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "scan", returnType: CAPPluginReturnPromise)
+    ]
+    private var pending: CAPPluginCall?
+
+    @objc func scan(_ call: CAPPluginCall) {
+        let wantCamera = (call.getString("source") ?? "camera") == "camera"
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController else {
+                call.reject("No view controller")
+                return
+            }
+            let picker = UIImagePickerController()
+            picker.sourceType = wantCamera && UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+            picker.delegate = self
+            picker.modalPresentationStyle = .fullScreen
+            self.pending = call
+            vc.present(picker, animated: true)
+        }
+    }
+
+    public func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+        pending?.resolve(["cancelled": true, "lines": []])
+        pending = nil
+    }
+
+    public func imagePickerController(_ picker: UIImagePickerController,
+                                      didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        guard let call = pending else { return }
+        pending = nil
+        guard let image = info[.originalImage] as? UIImage, let cg = image.cgImage else {
+            call.reject("No image")
+            return
+        }
+        let request = VNRecognizeTextRequest { req, error in
+            if let error = error {
+                call.reject(error.localizedDescription)
+                return
+            }
+            let obs = (req.results as? [VNRecognizedTextObservation]) ?? []
+            call.resolve(["cancelled": false, "lines": Self.rows(from: obs)])
+        }
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+        let orientation = CGImagePropertyOrientation(image.imageOrientation)
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try VNImageRequestHandler(cgImage: cg, orientation: orientation).perform([request])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Groups text boxes into rows by vertical position, then reads each row left to right.
+    static func rows(from obs: [VNRecognizedTextObservation]) -> [String] {
+        let items = obs.compactMap { o -> (y: CGFloat, x: CGFloat, h: CGFloat, text: String)? in
+            guard let t = o.topCandidates(1).first?.string else { return nil }
+            return (o.boundingBox.midY, o.boundingBox.minX, o.boundingBox.height, t)
+        }.sorted { $0.y > $1.y }
+        var rows: [[(y: CGFloat, x: CGFloat, h: CGFloat, text: String)]] = []
+        for it in items {
+            if let last = rows.last?.first, abs(last.y - it.y) < max(last.h, it.h) * 0.6 {
+                rows[rows.count - 1].append(it)
+            } else {
+                rows.append([it])
+            }
+        }
+        return rows.map { $0.sorted { $0.x < $1.x }.map { $0.text }.joined(separator: " ") }
+    }
+}
+
+extension CGImagePropertyOrientation {
+    init(_ o: UIImage.Orientation) {
+        switch o {
+        case .up: self = .up
+        case .down: self = .down
+        case .left: self = .left
+        case .right: self = .right
+        case .upMirrored: self = .upMirrored
+        case .downMirrored: self = .downMirrored
+        case .leftMirrored: self = .leftMirrored
+        case .rightMirrored: self = .rightMirrored
+        @unknown default: self = .up
+        }
     }
 }

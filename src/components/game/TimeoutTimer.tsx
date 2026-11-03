@@ -3,6 +3,7 @@ import { Square } from 'lucide-react';
 import type { Side, Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { beep } from '@/lib/beep';
 
 interface Active {
   team: Side;
@@ -28,6 +29,11 @@ export function TimeoutTimer({ active, onStop, onExpired }: Props) {
   const rafRef = useRef<number | null>(null);
   const onExpiredRef = useRef(onExpired);
   onExpiredRef.current = onExpired;
+
+  // One beep each time the flash comes on (12s and 3s warnings).
+  useEffect(() => {
+    if (flashOn) beep(120);
+  }, [flashOn]);
 
   useEffect(() => {
     if (!active) {

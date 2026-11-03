@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, Check, X, ClipboardPaste, Star } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, ClipboardPaste, Star, Camera } from 'lucide-react';
+import { isIOS, scanTeamSheet } from '@/lib/native';
 import { cn } from '@/lib/utils';
 import type { Player } from '@/types';
 import { newId, sortPlayers } from '@/lib/game';
@@ -37,6 +38,7 @@ export function PlayerEditor({
   const [editNum, setEditNum] = useState('');
   const [editName, setEditName] = useState('');
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [scanned, setScanned] = useState('');
 
   const addDup = isDuplicate(players, num);
   const canAdd = num.trim().length > 0 && !addDup;
@@ -135,6 +137,23 @@ export function PlayerEditor({
         >
           <ClipboardPaste className="w-4 h-4" />
         </button>
+        {isIOS && (
+          <button
+            type="button"
+            onClick={async () => {
+              const found = await scanTeamSheet('camera').catch(() => null);
+              if (found === null) return;
+              setScanned(found);
+              setBulkOpen(true);
+            }}
+            aria-label="Scan team sheet"
+            title="Photograph a team sheet to add players"
+            className="h-12 px-3 rounded-xl border-2 border-accent bg-accent/15 flex items-center justify-center gap-1.5 text-sm font-semibold active:brightness-125 transition-none"
+          >
+            <Camera className="w-5 h-5" />
+            Scan
+          </button>
+        )}
       </div>
       {addDup && (
         <div className="text-xs text-danger">
@@ -277,9 +296,13 @@ export function PlayerEditor({
       {bulkOpen && (
         <BulkAddPlayersModal
           open
-          onClose={() => setBulkOpen(false)}
+          onClose={() => {
+            setBulkOpen(false);
+            setScanned('');
+          }}
           existingPlayers={players}
           accent={accent}
+          initialText={scanned}
           onAdd={newPlayers => onChange([...players, ...newPlayers])}
         />
       )}

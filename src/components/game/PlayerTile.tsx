@@ -8,6 +8,8 @@ interface Props {
   jerseyColour: string;
   numberColour: string;
   isCaptain?: boolean;
+  /** Live points scored, shown bottom-left when > 0. */
+  points?: number;
   onClick: () => void;
 }
 
@@ -27,6 +29,7 @@ export function PlayerTile({
   jerseyColour,
   numberColour,
   isCaptain,
+  points = 0,
   onClick
 }: Props) {
   const redBorder = stats.ejected || stats.fourFoulWarning;
@@ -81,6 +84,11 @@ export function PlayerTile({
         </span>
       )}
 
+      {points > 0 && (
+        <span className="absolute bottom-1 left-1 px-1.5 rounded-md bg-black/40 text-white text-[10px] font-mono font-bold">
+          {points}pt
+        </span>
+      )}
       <div className="font-mono font-black text-3xl leading-none">
         {player.number}
       </div>

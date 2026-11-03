@@ -7,6 +7,8 @@ import { TeamEventLog } from './TeamEventLog';
 import {
   coachStatus,
   playerFoulStats,
+  livePoints,
+  playerPoints,
   sortPlayers,
   teamFoulsForQuarter,
   timeoutStatus
@@ -38,6 +40,7 @@ export function TeamPanel({
   onLogRatioChange
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
+  const hasLiveScore = game.events.some(e => e.kind === 'score');
   const teamFouls = teamFoulsForQuarter(game, side, game.currentQuarter);
   const inBonus = teamFouls >= 5;
   const bonusNext = teamFouls === 4;
@@ -100,6 +103,11 @@ export function TeamPanel({
               : '+ Tap to add coach name'}
           </div>
         </div>
+        {hasLiveScore && (
+          <div className="font-mono font-black text-4xl tabular-nums leading-none shrink-0" title="Live points">
+            {livePoints(game, side)}
+          </div>
+        )}
         <Pencil className="w-4 h-4 opacity-70 shrink-0" />
       </button>
 
@@ -179,6 +187,7 @@ export function TeamPanel({
                     key={p.id}
                     player={p}
                     stats={playerFoulStats(game, p.id)}
+                    points={playerPoints(game, p.id)}
                     isCaptain={team.captainId === p.id}
                     jerseyColour={team.jerseyColour}
                     numberColour={team.numberColour}

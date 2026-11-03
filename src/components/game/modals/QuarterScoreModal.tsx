@@ -3,7 +3,7 @@ import type { Game } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { GameClockInput, isValidGameClock } from '@/components/GameClockInput';
-import { nextQuarter, totalScore } from '@/lib/game';
+import { nextQuarter, totalScore, livePoints } from '@/lib/game';
 
 interface Props {
   open: boolean;
@@ -26,11 +26,17 @@ export function QuarterScoreModal({ open, game, onClose, onCommit }: Props) {
 
   // Pre-fill with the cumulative total at the end of this quarter, if we've
   // already recorded it once.
+  // Otherwise, if points are being tracked live, pre-fill those.
+  const live = game.events.some(e => e.kind === 'score');
   const [cumulativeA, setCumulativeA] = useState(
-    existing ? String(prevCumulativeA + existing.teamAScore) : ''
+    existing
+      ? String(prevCumulativeA + existing.teamAScore)
+      : live ? String(livePoints(game, 'A')) : ''
   );
   const [cumulativeB, setCumulativeB] = useState(
-    existing ? String(prevCumulativeB + existing.teamBScore) : ''
+    existing
+      ? String(prevCumulativeB + existing.teamBScore)
+      : live ? String(livePoints(game, 'B')) : ''
   );
   const [clock, setClock] = useState(game.lastGameClock);
   const [flipArrow, setFlipArrow] = useState(true);

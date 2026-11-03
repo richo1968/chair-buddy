@@ -210,6 +210,23 @@ export function reducer(state: AppState, action: Action): AppState {
             currentQuarter: target.quarterScored
           });
         }
+        // Undoing the latest arrow change puts the arrow back where it was.
+        // Changes alternate, so before it the arrow pointed the other way at
+        // the other team.
+        if (target?.kind === 'possessionChange') {
+          const latest = [...g.events].reverse().find(e => e.kind === 'possessionChange');
+          if (latest?.id === target.id) {
+            const back = target.halftimeFlip
+              ? { possessionArrow: target.newTeam }
+              : { possessionArrow: target.newTeam === 'A' ? ('B' as const) : ('A' as const) };
+            return touch({
+              ...g,
+              events,
+              ...back,
+              arrowDirection: target.newArrowDirection === 'left' ? 'right' : 'left'
+            });
+          }
+        }
         return touch({ ...g, events });
       });
 

@@ -5,6 +5,9 @@ import { Share } from '@capacitor/share';
 /** True when running inside the iPad app (Capacitor), false in the browser/PWA. */
 export const isNative = Capacitor.isNativePlatform();
 
+/** Voice entry and team-sheet scanning use Apple frameworks — iPad app only for now. */
+export const isIOS = Capacitor.getPlatform() === 'ios';
+
 interface PrinterPlugin {
   print(options?: { jobName?: string }): Promise<{ completed: boolean }>;
 }
@@ -32,4 +35,45 @@ export async function shareTextFile(filename: string, content: string): Promise<
     encoding: Encoding.UTF8
   });
   await Share.share({ title: filename, files: [uri] });
+}
+
+interface RosterScanPlugin {
+  scan(options: { source: 'camera' | 'library' }): Promise<{ cancelled: boolean; lines: string[] }>;
+}
+
+// Implemented in ios/App/App/ChairBuddyViewController.swift (Apple Vision text recognition).
+const RosterScan = registerPlugin<RosterScanPlugin>('RosterScan');
+
+/**
+ * Turns text read off a team sheet into "number, name" lines for the roster
+ * parser. Keeps rows with a 1–2 digit jersey number (or 00) at either end;
+ * skips headers, dates and anything else.
+ */
+export function rosterLinesFromScan(lines: string[]): string {
+  const out: string[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(/[|_•·]/g, ' ').replace(/\s+/g, ' ').trim();
+    const lead = /^#?\s*(00|\d{1,2})\b[\s.,:)-]*(.*)$/.exec(line);
+    const trail = lead ? null : /^(.*?)[\s,]+#?(00|\d{1,2})$/.exec(line);
+    if (!lead && !trail) continue;
+    const number = lead ? lead[1] : trail![2];
+    const rest = lead ? lead[2] : trail![1];
+    const name = (rest ?? '')
+      .replace(/\b\d+\b/g, ' ')
+      .replace(/[^A-Za-z' .-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    out.push(name ? `${number}, ${titleCase(name)}` : number);
+  }
+  return out.join('\n');
+}
+
+function titleCase(s: string): string {
+  return s.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (_, p, c) => p + c.toUpperCase());
+}
+
+export async function scanTeamSheet(source: 'camera' | 'library'): Promise<string | null> {
+  const res = await RosterScan.scan({ source });
+  if (res.cancelled) return null;
+  return rosterLinesFromScan(res.lines);
 }

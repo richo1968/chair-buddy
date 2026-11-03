@@ -1,4 +1,5 @@
 import {
+  CircleDot,
   AlertOctagon,
   AlertTriangle,
   ArrowLeft,
@@ -499,6 +500,8 @@ function iconFor(ev: GameEvent): { Icon: LucideIcon; tint: string } {
       return { Icon: Timer, tint: 'text-fg' };
     case 'protest':
       return { Icon: AlertOctagon, tint: 'text-danger' };
+    case 'score':
+      return { Icon: CircleDot, tint: 'text-accent' };
   }
 }
 

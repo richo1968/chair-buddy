@@ -114,7 +114,16 @@ export interface TimeoutEvent extends EventBase {
   forfeited: boolean;
 }
 
+/** Points scored (live scoring). playerId is unset for team points. */
+export interface ScoreEvent extends EventBase {
+  kind: 'score';
+  team: Side;
+  playerId?: string;
+  points: 1 | 2 | 3;
+}
+
 export type GameEvent =
+  | ScoreEvent
   | PossessionChangeEvent
   | FoulEvent
   | WarningEvent

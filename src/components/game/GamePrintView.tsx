@@ -129,6 +129,7 @@ function eventKindLabel(kind: string): { label: string; color: string } {
     case 'quarterScoreRecorded': return { label: 'SCORE', color: C.success };
     case 'timeout':            return { label: 'T/O',    color: C.muted };
     case 'protest':            return { label: 'PROTEST',color: C.danger };
+    case 'score':              return { label: 'PTS',    color: C.muted };
     default:                   return { label: '—',      color: C.muted };
   }
 }

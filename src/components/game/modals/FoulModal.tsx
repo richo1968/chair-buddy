@@ -26,6 +26,8 @@ interface Props {
   /** When set, this foul is being logged retroactively into a past quarter.
    *  Affects the subtitle and the default clock (10:00 instead of lastGameClock). */
   quarter?: Quarter;
+  /** Log points for this player instead of a foul. */
+  onScore?: (points: 1 | 2 | 3) => void;
 }
 
 export function FoulModal({
@@ -36,7 +38,8 @@ export function FoulModal({
   onClose,
   onCommit,
   onStartTimeout,
-  quarter
+  quarter,
+  onScore
 }: Props) {
   const team = side === 'A' ? game.teamA : game.teamB;
   const player =
@@ -115,6 +118,21 @@ export function FoulModal({
       size="lg"
     >
       <div className="space-y-4">
+      {isPlayer && onScore && !isPastEntry && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-fg uppercase tracking-widest w-16">Points</span>
+          {([1, 2, 3] as const).map(n => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onScore(n)}
+              className="flex-1 rounded-xl border-2 border-accent/60 bg-accent/10 py-2 text-lg font-black text-fg active:brightness-110 transition-none"
+            >
+              +{n}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-[1fr_auto] gap-6 items-start">
         <GameClockInput value={clock} onChange={setClock} />
         <div className="grid gap-3 grid-cols-1 w-[300px]">

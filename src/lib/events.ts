@@ -91,6 +91,12 @@ export function describeEvent(event: GameEvent, game: Game): string {
       return describeTimeout(event as TimeoutEvent, game);
     case 'protest':
       return describeProtest(event as ProtestEvent, game);
+    case 'score': {
+      const team = event.team === 'A' ? game.teamA : game.teamB;
+      const p = event.playerId ? team.players.find(pl => pl.id === event.playerId) : undefined;
+      const who = p ? ` #${p.number}${p.name ? ' ' + p.name : ''}` : '';
+      return `${teamName(game, event.team)}${who} — ${event.points} pt${event.points > 1 ? 's' : ''}`;
+    }
   }
 }
 
@@ -164,6 +170,9 @@ export function eventSideTint(event: GameEvent, game: Game): string | null {
     return side === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   if (event.kind === 'timeout') {
+    return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
+  }
+  if (event.kind === 'score') {
     return event.team === 'A' ? game.teamA.jerseyColour : game.teamB.jerseyColour;
   }
   if (event.kind === 'protest') {

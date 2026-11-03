@@ -1,4 +1,5 @@
 import {
+  CircleDot,
   Mic,
   AlertOctagon,
   AlertTriangle,
@@ -22,6 +23,8 @@ interface Props {
 
 function iconFor(ev: GameEvent): { Icon: LucideIcon; classes: string } {
   switch (ev.kind) {
+    case 'score':
+      return { Icon: CircleDot, classes: 'text-accent' };
     case 'foul':
       return { Icon: Flag, classes: 'text-danger' };
     case 'warning':
