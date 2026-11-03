@@ -70,7 +70,7 @@ const SOUND_ALIKES: Record<string, string> = {
   tech: 'technical', techs: 'technical', technicals: 'technical', tea: 'technical',
   unsporting: 'unsportsmanlike', unsportsman: 'unsportsmanlike', unsportsmen: 'unsportsmanlike',
   pointers: 'pointer', pts: 'points', pints: 'points', paints: 'points', joints: 'points',
-  numbers: 'number', no: 'number', num: 'number'
+  numbers: 'number', num: 'number'
 };
 
 /** Words speech recognition writes for a number when it mishears one. */
@@ -122,7 +122,12 @@ export function normalise(text: string): string {
       ? HOMOPHONES[t]
       : t
   );
-  return tokens.join(' ');
+  let out = tokens.join(' ');
+  // Scoresheet shorthand: "P2" = personal foul, 2 shots; "T1", "U2", "D2" likewise.
+  out = out.replace(/\b(?:(p|pee|pea)|(t|tee)|(u)|(d|dee))\s?([123])\b(?! (?:points?|pointer|minutes?|seconds?))/g,
+    (_m, p, t, u, _d, n) =>
+      `${p ? 'personal' : t ? 'technical' : u ? 'unsportsmanlike' : 'disqualifying'} foul ${n} shots`);
+  return out;
 }
 
 // ---------------------------------------------------------------- teams
@@ -242,7 +247,7 @@ function pad(n: number) {
 }
 
 /** Pulls a game-clock time out of the clause; returns it and the clause without it. */
-function extractClock(clause: string): { clock: string | null; rest: string } {
+export function extractClock(clause: string): { clock: string | null; rest: string } {
   const patterns: [RegExp, (m: RegExpExecArray) => string][] = [
     [/\b(\d{1,2}) minutes? (?:and )?(\d{1,2}) (?:seconds?|secs?)\b/, m => `${pad(+m[1])}:${pad(+m[2])}`],
     [/\b(\d{1,2}):(\d{2})\b/, m => `${pad(+m[1])}:${m[2]}`],
@@ -264,7 +269,7 @@ function extractClock(clause: string): { clock: string | null; rest: string } {
   return { clock: null, rest: clause };
 }
 
-function extractFreeThrows(clause: string): { fts?: number; rest: string } {
+export function extractFreeThrows(clause: string): { fts?: number; rest: string } {
   const m = /\b(\d) (?:shots?|free throws?|fts?|foul shots?)\b/.exec(clause);
   if (m) return { fts: +m[1], rest: clause.replace(m[0], ' ') };
   if (/\band (?:1|one)\b/.test(clause)) return { fts: 1, rest: clause.replace(/\band (?:1|one)\b/, ' ') };
@@ -562,8 +567,9 @@ export function describeAction(a: VoiceAction, game: Game): string {
         a.subject === 'player'
           ? `#${a.number}${playerName(game, a.side, a.number!)}`
           : a.subject;
-      const ft = a.freeThrows ? ` · ${a.freeThrows} FT` : '';
-      return `${FOUL_TYPE_LABEL[a.type]} foul — ${teamLabel(game, a.side)} ${who}${ft} at ${a.clock}`;
+      const ft = a.freeThrows ? ` — ${a.freeThrows} shot${a.freeThrows > 1 ? 's' : ''}` : '';
+      const kind = a.type === 'personal' ? 'Foul' : `${FOUL_TYPE_LABEL[a.type]} foul`;
+      return `${kind} on ${teamLabel(game, a.side)} ${who}${ft}, at ${a.clock}`;
     }
     case 'score':
       return `+${a.points} point${a.points > 1 ? 's' : ''} — ${teamLabel(game, a.side)}${a.number ? ` #${a.number}${playerName(game, a.side, a.number)}` : ''}`;

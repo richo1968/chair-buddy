@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Mic, MicOff, Sparkles, X } from 'lucide-react';
-import type { Game, Side } from '@/types';
+import { ArrowLeftRight, Check, Clock, Mic, MicOff, Sparkles, X } from 'lucide-react';
+import { isValidGameClock } from '@/components/GameClockInput';
+import type { FoulType, Game, Side } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Voice, interpretInstructions, voiceSupported } from '@/lib/voice/voice';
 import {
@@ -9,6 +10,9 @@ import {
   normalise,
   parseCommand,
   recognitionHints,
+  teamKeywords,
+  extractClock,
+  extractFreeThrows,
   teamLabel,
   type VoiceAction
 } from '@/lib/voice/parse';
@@ -37,6 +41,8 @@ const isAlt = (a: VoiceAction): a is FoulAction => a.kind === 'foul' && !!a.alte
 
 const YES = /^(yes|yep|yeah|confirm|confirmed|correct|ok|okay|good|that s right|thats right)\b/;
 const NO = /^(no|nope|cancel|wrong|scratch that|delete that|undo)\b/;
+/** "no, black 5" / "actually white 12" — a spoken correction of the pop-up. */
+const CORRECTION = /^(?:no|nope|wrong|actually|sorry|correction|i mean|i meant|make that|make it|change (?:that|it) to)\b[\s,]*(.+)$/;
 
 /**
  * Chair Buddy Pro voice entry: a big listen toggle, the live transcript, and
@@ -67,6 +73,30 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
     }
   };
 
+  /** Swap the pop-up's actions for corrected ones, keeping what was heard. */
+  const replaceHead = (p: Pending, actions: VoiceAction[], said: string) => {
+    const hadTimeout = p.actions.find(a => a.kind === 'timeout');
+    const hasTimeout = actions.find(a => a.kind === 'timeout');
+    if (hadTimeout && !hasTimeout) propsRef.current.onTimeoutCancelled();
+    if (hasTimeout && hasTimeout.kind === 'timeout' && (!hadTimeout || hadTimeout.kind !== 'timeout' || hadTimeout.side !== hasTimeout.side)) {
+      propsRef.current.onTimeoutHeard(hasTimeout.side);
+    }
+    setQueue(q =>
+      q.map(x =>
+        x.id === p.id
+          ? { ...x, actions, problems: [], transcript: said ? `${x.transcript} → ${said}` : x.transcript }
+          : x
+      )
+    );
+  };
+
+  /** Tap-edit one line of the pop-up. */
+  const editAction = (p: Pending, index: number, next: VoiceAction) => {
+    const list: VoiceAction[] = p.actions.filter(a => !isAlt(a));
+    list[index] = next;
+    replaceHead(p, list, '');
+  };
+
   const cancel = (p: Pending) => {
     setQueue(q => q.filter(x => x.id !== p.id));
     if (p.actions.some(a => a.kind === 'timeout')) propsRef.current.onTimeoutCancelled();
@@ -79,11 +109,25 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
 
   const handleUtterance = async (text: string) => {
     setPartial('');
-    const said = normalise(text);
+    const said = text.toLowerCase().replace(/[^a-z0-9:\s]/g, ' ').replace(/\s+/g, ' ').trim();
     const head = queueRef.current[0];
     if (head) {
       if (YES.test(said) && head.actions.length && !head.actions.some(isAlt)) return confirm(head);
+      const fix = CORRECTION.exec(said);
+      if (fix) {
+        const corrected = correctPending(head, fix[1], gameRef.current, 'correct');
+        if (corrected) {
+          replaceHead(head, corrected, text);
+          return;
+        }
+      }
       if (NO.test(said)) return cancel(head);
+      // Add-on in context: "at 3:12", "two shots", "number 5", "black".
+      const amended = correctPending(head, text, gameRef.current, 'amend');
+      if (amended) {
+        replaceHead(head, amended, text);
+        return;
+      }
     }
     // Ordinary chatter (no command words) is ignored entirely.
     const g = gameRef.current;
@@ -229,9 +273,12 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
             <div className="px-5 text-base italic text-muted-fg">“{head.transcript}”</div>
             <div className="px-5 py-3 space-y-2">
               {head.actions.filter(a => !isAlt(a)).map((a, i) => (
-                <div key={i} className="flex items-start gap-2 text-lg font-semibold">
-                  <Check className="w-5 h-5 mt-1 text-accent shrink-0" />
-                  {describeAction(a, game)}
+                <div key={i}>
+                  <div className="flex items-start gap-2 text-lg font-semibold">
+                    <Check className="w-5 h-5 mt-1 text-accent shrink-0" />
+                    {describeAction(a, game)}
+                  </div>
+                  <QuickFix action={a} onChange={next => editAction(head, i, next)} />
                 </div>
               ))}
               {head.problems.map((p, i) => (
@@ -278,12 +325,175 @@ export function VoicePanel({ game, onTimeoutHeard, onTimeoutCancelled, onConfirm
             </div>
             {listening && head.actions.length > 0 && (
               <div className="px-5 pb-3 -mt-2 text-[11px] text-muted-fg text-center">
-                Or say “yes” to confirm, “no” to cancel
+                Say “yes” to confirm · “no” to cancel · add details like “at 3:12” or “two shots” · “no, black 5” to fix
               </div>
             )}
           </div>
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Applies a spoken correction or add-on to the pending pop-up.
+ * - amend (no "no"/"actually"): a pure add-on with no action word, e.g.
+ *   "at 3:12", "two shots", "number 5", "black". It fills in or fixes just
+ *   that part. Returns null when the phrase has an action word, so a new
+ *   command is queued instead.
+ * - correct ("no, …"): a different kind of command replaces the pop-up;
+ *   the same kind ("no, foul black 5") or a fragment patches it.
+ */
+export function correctPending(p: Pending, fragment: string, game: Game, mode: 'amend' | 'correct'): VoiceAction[] | null {
+  const current: VoiceAction[] = p.actions.filter(a => !isAlt(a));
+  const alts = p.actions.filter(isAlt);
+  const f = normalise(fragment);
+  const actionWord = /\b(foul|technical|unsportsmanlike|disqualifying|timeout|warning|arrow|possession|points?|pointer|free throw|score|protest|jump ball|held ball)\b/.test(f);
+  if (mode === 'amend' && actionWord) return null;
+  const full = parseCommand(fragment, game);
+  const base: VoiceAction | undefined = current[0] ?? (alts[0] && { ...alts[0], alternative: false });
+  if (!base) return full.actions.length ? full.actions : null;
+  if (mode === 'correct' && full.actions.length && full.actions[0].kind !== base.kind) return full.actions;
+  if (current.length > 1) return mode === 'correct' && full.actions.length ? full.actions : null;
+
+  const next = { ...base } as VoiceAction;
+  let changed = false;
+  const { clock, rest: noClock } = extractClock(f);
+  const { fts, rest } = extractFreeThrows(noClock);
+  if (clock && 'clock' in next) { (next as { clock: string }).clock = clock; changed = true; }
+  const kw = teamKeywords(game);
+  const side: Side | null = kw.A.some(k => new RegExp(`\\b${k}\\b`).test(rest)) ? 'A'
+    : kw.B.some(k => new RegExp(`\\b${k}\\b`).test(rest)) ? 'B' : null;
+  if (side && 'side' in next) { (next as { side: Side }).side = side; changed = true; }
+  if (next.kind === 'foul') {
+    if (fts !== undefined) { next.freeThrows = fts; changed = true; }
+    const t = /\btechnical\b/.test(rest) ? 'technical' : /\bunsportsmanlike\b/.test(rest) ? 'unsportsmanlike'
+      : /\bdisqualifying\b/.test(rest) ? 'disqualifying' : /\bpersonal\b/.test(rest) ? 'personal' : null;
+    if (t) { next.type = t; changed = true; }
+    if (/\bcoach\b/.test(rest)) { next.subject = 'coach'; next.number = undefined; changed = true; }
+    if (/\bbench\b/.test(rest)) { next.subject = 'bench'; next.number = undefined; changed = true; }
+  }
+  if (next.kind === 'score') {
+    const pm = /\b([123]) (?:points?|pointer)\b/.exec(rest) ?? (/\bfree throw\b/.test(rest) ? ['', '1'] : null);
+    if (pm) { next.points = +pm[1] as 1 | 2 | 3; changed = true; }
+  }
+  if (next.kind === 'warning') {
+    if (/\b(time delay|delay)\b/.test(rest)) { next.warningType = 'time-delay'; changed = true; }
+    else if (/\bflop/.test(rest)) { next.warningType = 'flop'; changed = true; }
+  }
+  const numRest = rest.replace(/\b[123] (?:points?|pointer)\b/g, ' ');
+  const num = /\b(\d{1,2})\b/.exec(numRest)?.[1];
+  if (num && (next.kind === 'score' || (next.kind === 'foul' && next.subject === 'player'))) {
+    next.number = String(+num);
+    changed = true;
+  }
+  if (changed) return [next];
+  return mode === 'correct' && full.actions.length ? full.actions : null;
+}
+
+
+const FOUL_TYPES: { t: FoulType; label: string }[] = [
+  { t: 'personal', label: 'P' },
+  { t: 'technical', label: 'T' },
+  { t: 'unsportsmanlike', label: 'U' },
+  { t: 'disqualifying', label: 'D' }
+];
+
+/** One-tap fixes under a pop-up line: other team, number, foul type, points. */
+function QuickFix({ action, onChange }: { action: VoiceAction; onChange: (a: VoiceAction) => void }) {
+  const [editingNumber, setEditingNumber] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [editingClock, setEditingClock] = useState(false);
+  const [clockDraft, setClockDraft] = useState('');
+  const clockText = clockDraft.padStart(4, '0').replace(/^(\d\d)(\d\d)$/, '$1:$2');
+  if (action.kind === 'quarterScore') return null;
+  const chip = 'px-3 py-1.5 rounded-lg border border-border bg-surface-hi text-sm font-semibold active:brightness-125 transition-none';
+  const on = 'border-accent bg-accent/20';
+  const hasNumber = (action.kind === 'foul' && action.subject === 'player') || action.kind === 'score';
+  return (
+    <div className="ml-7 mt-1 flex flex-wrap items-center gap-1.5">
+      <button type="button" className={chip} onClick={() => onChange({ ...action, side: action.side === 'A' ? 'B' : 'A' } as VoiceAction)}>
+        <ArrowLeftRight className="inline w-3.5 h-3.5 mr-1" />Other team
+      </button>
+      {hasNumber && (editingNumber ? (
+        <span className="flex items-center gap-1">
+          <input
+            autoFocus
+            inputMode="numeric"
+            value={draft}
+            onChange={e => setDraft(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
+            className="w-16 h-9 rounded-lg bg-surface-hi border border-accent px-2 font-mono text-lg text-center"
+          />
+          <button
+            type="button"
+            className={`${chip} ${on}`}
+            disabled={!draft}
+            onClick={() => {
+              onChange({ ...action, number: String(+draft) } as VoiceAction);
+              setEditingNumber(false);
+            }}
+          >
+            OK
+          </button>
+        </span>
+      ) : (
+        <button type="button" className={chip} onClick={() => { setDraft(''); setEditingNumber(true); }}>
+          #{action.kind === 'foul' || action.kind === 'score' ? action.number : ''} change
+        </button>
+      ))}
+      {'clock' in action && (editingClock ? (
+        <span className="flex items-center gap-1">
+          <input
+            autoFocus
+            inputMode="numeric"
+            placeholder="mmss"
+            value={clockDraft}
+            onChange={e => setClockDraft(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+            className="w-20 h-9 rounded-lg bg-surface-hi border border-accent px-2 font-mono text-lg text-center"
+          />
+          <span className="font-mono text-sm text-muted-fg">{clockText}</span>
+          <button
+            type="button"
+            className={`${chip} ${on}`}
+            disabled={!clockDraft || !isValidGameClock(clockText)}
+            onClick={() => {
+              onChange({ ...action, clock: clockText } as VoiceAction);
+              setEditingClock(false);
+            }}
+          >
+            OK
+          </button>
+        </span>
+      ) : (
+        <button type="button" className={chip} onClick={() => { setClockDraft(''); setEditingClock(true); }}>
+          <Clock className="inline w-3.5 h-3.5 mr-1" />{action.clock}
+        </button>
+      ))}
+      {action.kind === 'foul' && FOUL_TYPES.map(f => (
+        <button key={f.t} type="button" className={`${chip} ${action.type === f.t ? on : ''}`} onClick={() => onChange({ ...action, type: f.t })}>
+          {f.label}
+        </button>
+      ))}
+      {action.kind === 'foul' && (
+        <span className="flex items-center gap-1 ml-1">
+          <span className="text-[11px] text-muted-fg uppercase tracking-wider">Shots</span>
+          {[0, 1, 2, 3].map(n => (
+            <button
+              key={n}
+              type="button"
+              className={`${chip} ${(action.freeThrows ?? 0) === n ? on : ''}`}
+              onClick={() => onChange({ ...action, freeThrows: n || undefined })}
+            >
+              {n === 0 ? '–' : `${FOUL_TYPES.find(f => f.t === action.type)?.label ?? 'P'}${n}`}
+            </button>
+          ))}
+        </span>
+      )}
+      {action.kind === 'score' && ([1, 2, 3] as const).map(n => (
+        <button key={n} type="button" className={`${chip} ${action.points === n ? on : ''}`} onClick={() => onChange({ ...action, points: n })}>
+          {n}pt
+        </button>
+      ))}
+    </div>
   );
 }
