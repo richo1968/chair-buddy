@@ -92,8 +92,13 @@ public class VoicePlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve(["granted": false, "reason": "speech"])
                 return
             }
-            AVAudioApplication.requestRecordPermission { ok in
+            let done: (Bool) -> Void = { ok in
                 call.resolve(["granted": ok, "reason": ok ? "" : "microphone"])
+            }
+            if #available(iOS 17.0, *) {
+                AVAudioApplication.requestRecordPermission(completionHandler: done)
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission(done)
             }
         }
     }
